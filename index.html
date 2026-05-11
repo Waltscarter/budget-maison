@@ -347,7 +347,34 @@ function getBudgetPeriod(month){let safe=normalizeTransactions(transactions).sor
 function txForCycle(month){let p=getBudgetPeriod(month);return normalizeTransactions(transactions).filter(x=>x.date>=p.start&&x.date<p.end)}
 function spentMap(txs){let m={};for(const t of txs){if(t.type!=="expense")continue;if(t.category==="mouvement_interne")continue;m[t.category]=(m[t.category]||0)+toNumber(t.amount)}return m}
 function remainingBudget(map){if(!Array.isArray(budgets))budgets=DEFAULT_BUDGETS;return budgets.reduce((s,b)=>{let lim=toNumber(b.limit); if(lim<=0)return s; return s+Math.max(0,lim-toNumber(map[b.id]))},0)}
-function forecast(){let period=getBudgetPeriod(selectedMonth);let txs=txForCycle(selectedMonth);let inc=txs.filter(t=>t.type==="income"&&t.category!=="mouvement_interne").reduce((s,t)=>s+toNumber(t.amount),0);let exp=txs.filter(t=>t.type==="expense"&&t.category!=="mouvement_interne").reduce((s,t)=>s+toNumber(t.amount),0);let map=spentMap(txs);let sim=simulation();let simPaid=toNumber(map[SAVING_CATEGORY]);let simRemain=Math.max(0,sim.totalToSave-simPaid);let start=toNumber(monthBalances[selectedMonth]??settings.initialBalance);let current=start+inc-exp;let rem=remainingBudget(map);let projected=current+toNumber(settings.expectedIncomeRemaining)-rem-simRemain;return {period,monthTransactions:txs,incomePaid:inc,expensesPaid:exp,spentByCategory:map,simulation:sim,simulationAlreadyPaid:simPaid,remainingSimulationSaving:simRemain,remainingBudget:rem,currentBalance:current,projectedEndBalance:projected}}
+function forecast(){
+  let period=getBudgetPeriod(selectedMonth);
+  let txs=txForCycle(selectedMonth);
+  let inc=txs.filter(t=>t.type==="income"&&t.category!=="mouvement_interne").reduce((s,t)=>s+toNumber(t.amount),0);
+  let exp=txs.filter(t=>t.type==="expense"&&t.category!=="mouvement_interne").reduce((s,t)=>s+toNumber(t.amount),0);
+  let map=spentMap(txs);
+  let sim=simulation();
+  let simPaid=toNumber(map[SAVING_CATEGORY]);
+  let simRemain=Math.max(0,sim.totalToSave-simPaid);
+  let start=toNumber(monthBalances[selectedMonth]??settings.initialBalance);
+  // SOLDE RÉEL ACTUEL = ce qui est vraiment sur le compte maintenant
+  let current=start+inc-exp;
+  // RESTE À PAYER selon budgets (ce qui n'a pas encore été dépensé)
+  let rem=remainingBudget(map);
+  // PRÉVISIONNEL SI BUDGETS RESPECTÉS = réel - reste budgets - épargne simulation restante + entrées attendues
+  let projectedIfBudgeted=current+toNumber(settings.expectedIncomeRemaining)-rem-simRemain;
+  // DÉPASSEMENTS = dépenses au-delà des budgets définis
+  let overBudget=0;
+  if(Array.isArray(budgets)){for(const b of budgets){if(toNumber(b.limit)<=0)continue;let spent=toNumber(map[b.id]);let over=Math.max(0,spent-toNumber(b.limit));overBudget+=over;}}
+  return {
+    period,monthTransactions:txs,incomePaid:inc,expensesPaid:exp,spentByCategory:map,
+    simulation:sim,simulationAlreadyPaid:simPaid,remainingSimulationSaving:simRemain,
+    remainingBudget:rem,currentBalance:current,
+    projectedEndBalance:projectedIfBudgeted, // compatibilité
+    projectedIfBudgeted,
+    overBudget
+  };
+}
 
 function detectDelimiter(line){let c={tab:0,semi:0,comma:0},q=false;for(let i=0;i<line.length;i++){let ch=line[i],n=line[i+1];if(ch==='"'&&n==='"'){i++;continue}if(ch==='"')q=!q;if(!q&&ch==='\t')c.tab++;if(!q&&ch===';')c.semi++;if(!q&&ch===',')c.comma++}if(c.tab>=c.semi&&c.tab>=c.comma&&c.tab>0)return'\t';if(c.semi>=c.comma&&c.semi>0)return';';return','}
 function parseLine(line,d){let cells=[],cur="",q=false;for(let i=0;i<line.length;i++){let ch=line[i],n=line[i+1];if(ch==='"'&&n==='"'){cur+='"';i++;continue}if(ch==='"'){q=!q;continue}if(!q&&ch===d){cells.push(cur.trim());cur="";continue}cur+=ch}cells.push(cur.trim());return cells}
@@ -553,23 +580,39 @@ function renderAlerts(f, ok, warn) {
 function renderMetricsNew(f, ok, warn) {
   const cc = ok ? "ok" : warn ? "" : "ng";
   const bdg = ok ? '<span class="bdg bdg-ok">&#10003; OK</span>' : warn ? '<span class="bdg bdg-w">&#9888; Attention</span>' : '<span class="bdg bdg-d">&#10007; Danger</span>';
-  document.getElementById("m1").innerHTML = '<p>Solde actuel calcul&#233;</p><b>' + euro(f.currentBalance) + '</b><small>D&#233;but + entr&#233;es &#8722; d&#233;penses</small>';
-  document.getElementById("m2").innerHTML = '<p>D&#233;j&#224; d&#233;pens&#233;</p><b>' + euro(f.expensesPaid) + '</b><small>Ce cycle</small>';
-  document.getElementById("m3").innerHTML = '<p>Reste &#224; payer</p><b>' + euro(f.remainingBudget+f.remainingSimulationSaving) + '</b><small>Budgets + simulation</small>';
+  // M1 : solde réel actuel = ce qui est sur le compte maintenant
+  document.getElementById("m1").innerHTML = '<p>Solde r&#233;el actuel</p><b>' + euro(f.currentBalance) + '</b><small>D&#233;but + entr&#233;es re&#231;ues &#8722; d&#233;penses pay&#233;es</small>';
+  // M2 : déjà dépensé
+  document.getElementById("m2").innerHTML = '<p>D&#233;j&#224; d&#233;pens&#233;</p><b>' + euro(f.expensesPaid) + '</b><small>Ce cycle (hors mouvements internes)</small>';
+  // M3 : prévisionnel si budgets respectés
+  const overTxt = f.overBudget > 0 ? ' <small style="color:var(--danger)">dont ' + euro(f.overBudget) + ' de d&#233;passements</small>' : '';
+  document.getElementById("m3").className = "mc";
+  document.getElementById("m3").innerHTML = '<p>Pr&#233;visionnel si budgets respect&#233;s</p><b>' + euro(f.projectedIfBudgeted) + '</b><small>R&#233;el &#8722; reste budgets &#8722; &#233;pargne simulation</small>' + overTxt;
+  // M4 : badge global
   document.getElementById("m4").className = "mc " + cc;
-  document.getElementById("m4").innerHTML = '<p>Solde pr&#233;visionnel fin de cycle</p><b>' + euro(f.projectedEndBalance) + '</b>' + bdg;
+  document.getElementById("m4").innerHTML = '<p>Reste &#224; payer (budgets)</p><b>' + euro(f.remainingBudget + f.remainingSimulationSaving) + '</b><small>Budgets non consomm&#233;s + simulation</small>' + bdg;
 }
 
 function renderForecastNew(f) {
   const sb = monthBalances[selectedMonth] != null ? monthBalances[selectedMonth] : settings.initialBalance;
+  const overLine = f.overBudget > 0
+    ? '<div class="fline ex" style="opacity:.7"><span>&#9888; D&#233;passements de budgets</span><b style="color:var(--danger)">+' + euro(f.overBudget) + '</b></div>'
+    : '';
   document.getElementById("forecastBox").innerHTML =
+    // --- SITUATION RÉELLE ---
+    '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Situation r&#233;elle</div>' +
     '<div class="fline"><span>Solde d&#233;but du cycle</span><b>' + euro(sb) + '</b></div>' +
-    '<div class="fline in"><span>+ Entr&#233;es d&#233;j&#224; re&#231;ues</span><b style="color:var(--ok)">' + euro(f.incomePaid) + '</b></div>' +
-    '<div class="fline in"><span>+ Entr&#233;es pr&#233;vues restantes</span><b style="color:var(--ok)">' + euro(settings.expectedIncomeRemaining) + '</b></div>' +
+    '<div class="fline in"><span>+ Entr&#233;es re&#231;ues</span><b style="color:var(--ok)">' + euro(f.incomePaid) + '</b></div>' +
     '<div class="fline ex"><span>&#8722; D&#233;penses pay&#233;es</span><b style="color:var(--danger)">' + euro(f.expensesPaid) + '</b></div>' +
-    '<div class="fline ex"><span>&#8722; Reste des budgets</span><b style="color:var(--danger)">' + euro(f.remainingBudget) + '</b></div>' +
+    '<div class="fline tot" style="background:rgba(255,255,255,.04)"><span>= Solde r&#233;el actuel</span><b>' + euro(f.currentBalance) + '</b></div>' +
+    '<div style="height:1px;background:rgba(255,255,255,.07);margin:10px 0"></div>' +
+    // --- PRÉVISIONNEL ---
+    '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Pr&#233;visionnel fin de cycle</div>' +
+    '<div class="fline in"><span>+ Entr&#233;es attendues restantes</span><b style="color:var(--ok)">' + euro(settings.expectedIncomeRemaining) + '</b></div>' +
+    '<div class="fline ex"><span>&#8722; Reste des budgets &#224; payer</span><b style="color:var(--danger)">' + euro(f.remainingBudget) + '</b></div>' +
     '<div class="fline ex"><span>&#8722; &#201;pargne simulation restante</span><b style="color:var(--danger)">' + euro(f.remainingSimulationSaving) + '</b></div>' +
-    '<div class="fline tot"><span>= Solde pr&#233;visionnel fin de cycle</span><b>' + euro(f.projectedEndBalance) + '</b></div>';
+    overLine +
+    '<div class="fline tot"><span>= Pr&#233;visionnel si budgets respect&#233;s</span><b>' + euro(f.projectedIfBudgeted) + '</b></div>';
 }
 
 function renderSimMiniNew(f) {
