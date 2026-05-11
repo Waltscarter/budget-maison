@@ -8,29 +8,34 @@ module.exports = async function handler(req, res) {
   const KV_TOKEN = process.env.KV_REST_API_TOKEN;
   if (!KV_URL || !KV_TOKEN) return res.status(500).json({ ok: false, error: 'KV non configuré' });
 
+  // Upstash REST API: SET key value
+  const kvSet = async (key, value) => {
+    // On envoie la valeur comme JSON stringifié une seule fois
+    const encoded = encodeURIComponent(JSON.stringify(value));
+    const r = await fetch(`${KV_URL}/set/${encodeURIComponent(key)}/${encoded}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${KV_TOKEN}` }
+    });
+    return r.json();
+  };
+
+  // Upstash REST API: GET key
   const kvGet = async (key) => {
-    const r = await fetch(`${KV_URL}/get/${key}`, {
+    const r = await fetch(`${KV_URL}/get/${encodeURIComponent(key)}`, {
       headers: { Authorization: `Bearer ${KV_TOKEN}` }
     });
     const j = await r.json();
-    if (!j.result) return null;
-    try { return JSON.parse(j.result); } catch { return null; }
+    if (j.result === null || j.result === undefined) return null;
+    // result est la string stockée, on la parse une seule fois
+    try { return JSON.parse(j.result); } catch { return j.result; }
   };
 
-  const kvSet = async (key, value) => {
-    await fetch(`${KV_URL}/set/${key}`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${KV_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(JSON.stringify(value))
-    });
-  };
-
+  // GET — retourne toutes les données
   if (req.method === 'GET') {
-    const [settings, budgets, transactions, selectedMonth, monthBalances, savedAt] = await Promise.all([
+    const [settings, budgets, transactions, monthBalances, savedAt] = await Promise.all([
       kvGet('budget:settings'),
       kvGet('budget:budgets'),
       kvGet('budget:transactions'),
-      kvGet('budget:selectedMonth'),
       kvGet('budget:monthBalances'),
       kvGet('budget:savedAt'),
     ]);
@@ -41,19 +46,25 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       ok: true,
-      data: { settings, budgets, transactions, selectedMonth, monthBalances, _savedAt: savedAt }
+      data: {
+        settings: settings || null,
+        budgets: Array.isArray(budgets) ? budgets : null,
+        transactions: Array.isArray(transactions) ? transactions : [],
+        monthBalances: (monthBalances && typeof monthBalances === 'object') ? monthBalances : {},
+        _savedAt: savedAt
+      }
     });
   }
 
+  // POST — sauvegarde toutes les données
   if (req.method === 'POST') {
-    const { settings, budgets, transactions, selectedMonth, monthBalances } = req.body || {};
+    const { settings, budgets, transactions, monthBalances } = req.body || {};
     const savedAt = Date.now();
 
     await Promise.all([
       settings      !== undefined && kvSet('budget:settings', settings),
       budgets       !== undefined && kvSet('budget:budgets', budgets),
       transactions  !== undefined && kvSet('budget:transactions', transactions),
-      selectedMonth !== undefined && kvSet('budget:selectedMonth', selectedMonth),
       monthBalances !== undefined && kvSet('budget:monthBalances', monthBalances),
       kvSet('budget:savedAt', savedAt),
     ].filter(Boolean));
