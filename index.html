@@ -259,7 +259,7 @@
 </div><!-- /w -->
 
 <script>
-const DEFAULT_SETTINGS={initialBalance:4582,targetIncome:4200,expectedIncomeRemaining:0,currentRent:973.88,currentDiac:248.06,simulatedHouseCredit:1600,ownerCostsProvision:300,securitySaving:200,minimumBalance:0,savingsGoal:5000,savingsGoalMonths:6};
+const DEFAULT_SETTINGS={initialBalance:4494.77,targetIncome:4200,expectedIncomeRemaining:0,currentRent:973.88,currentDiac:248.06,simulatedHouseCredit:1600,ownerCostsProvision:300,securitySaving:200,minimumBalance:0,savingsGoal:5000,savingsGoalMonths:6};
 const DEFAULT_BUDGETS=[{id:"courses_costco",label:"Courses / Costco",limit:220},{id:"courses_complement",label:"Compléments courses",limit:130},{id:"hygiene_maison",label:"Hygiène / maison",limit:80},{id:"ecole",label:"École",limit:300},{id:"sante_enfant",label:"Santé / suivi enfant",limit:180},{id:"sante_beaute",label:"Santé / beauté adulte",limit:60},{id:"telecom",label:"Internet / téléphones",limit:75},{id:"assurances",label:"Assurances",limit:120},{id:"energie_eau",label:"Énergie / eau",limit:100},{id:"transport",label:"Essence / péage / parking",limit:180},{id:"grands_trajets",label:"Grands trajets / vacances",limit:70},{id:"repas_travail",label:"Repas travail / snacks",limit:50},{id:"restos_sorties",label:"Restos / sorties",limit:80},{id:"abonnements_digitaux",label:"Abonnements numériques",limit:35},{id:"dons_cotisations",label:"Dons / cotisations",limit:30},{id:"jeux_fdj",label:"Jeux / FDJ",limit:0},{id:"services_courrier",label:"Services / courrier",limit:30},{id:"shopping",label:"Shopping / Amazon / Temu / Vinted",limit:100},{id:"paypal_4x",label:"PayPal / paiements 4x",limit:0},{id:"epargne_existante",label:"Épargne existante / PEE",limit:100},{id:"imprevus",label:"Imprévus",limit:100},{id:"loyer",label:"Loyer actuel",limit:973.88},{id:"diac",label:"Crédit auto DIAC",limit:248.06},{id:"autre",label:"Autre",limit:0},{id:"mouvement_interne",label:"Mouvement interne (livret, notaire…)",limit:0}];
 const SAVING_CATEGORY="epargne_simulation"; const SALARY_MARKER="euro disney";
 let settings=load("settings",DEFAULT_SETTINGS), budgets=load("budgets",DEFAULT_BUDGETS), transactions=load("transactions",[]), selectedMonth=load("selectedMonth",today().slice(0,7)), monthBalances=load("monthBalances",{[today().slice(0,7)]:DEFAULT_SETTINGS.initialBalance});
@@ -545,12 +545,28 @@ document.getElementById("fileInput").addEventListener("change",e=>{
   if(isXlsx){
     reader.onload=ev=>{
       try{
-        const wb=XLSX.read(ev.target.result,{type:"array"});
+        const wb=XLSX.read(ev.target.result,{type:"array",cellDates:true});
         const ws=wb.Sheets[wb.SheetNames[0]];
-        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
-        const csv=rows.map(r=>r.map(c=>{const s=String(c==null?"":c);return s.includes(";")||s.includes('"')||s.includes("\n")?'"'+s.replace(/"/g,'""')+'"':s;}).join(";")).join("\n");
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false,dateNF:"yyyy-mm-dd"});
+        // Format BoursoBank Excel : col0=dateOp, col1=dateVal, col2=label, col3=category, col4=categoryParent, col5=supplierFound, col6=amount, col7=comment, col8=accountNum, col9=accountLabel, col10=accountbalance
+        // On génère un CSV avec en-tête standard que parseBankExportText reconnaît
+        const header = "Date opération;Date valeur;Libellé;Catégorie;Groupe;Libellé simplifié;Montant";
+        const lines = [header];
+        for(const row of rows){
+          if(!row[0]||!row[6]) continue; // skip lignes vides
+          const dateOp = String(row[0]).substring(0,10); // yyyy-mm-dd
+          const dateVal = String(row[1]||row[0]).substring(0,10);
+          const label = String(row[2]||"");
+          const cat = String(row[3]||"");
+          const grp = String(row[4]||"");
+          const simp = String(row[5]||"");
+          const amt = String(row[6]||"").replace(".",",");
+          const escape = s => s.includes(";")||s.includes('"')?'"'+s.replace(/"/g,'""')+'"':s;
+          lines.push([dateOp,dateVal,escape(label),escape(cat),escape(grp),escape(simp),amt].join(";"));
+        }
+        const csv=lines.join("\n");
         document.getElementById("importText").value=csv;
-        document.getElementById("importMessage").textContent="Fichier "+file.name+" chargé ("+rows.length+" lignes). Clique sur Importer.";
+        document.getElementById("importMessage").textContent="Fichier "+file.name+" chargé ("+(lines.length-1)+" opérations). Clique sur Importer.";
       }catch(err){document.getElementById("importMessage").textContent="Erreur lecture Excel : "+err.message;}
     };
     reader.readAsArrayBuffer(file);
