@@ -130,6 +130,7 @@
     <button class="btn btn-s" onclick="pullSync()" title="Recharger depuis le serveur">&#8635; Sync</button>
     <button class="btn btn-g" onclick="toggle('testsBox')">Tests</button>
     <button class="btn btn-d" onclick="resetSelectedCycle()">R&#233;init cycle</button>
+    <button class="btn btn-d" onclick="resetTransactionsOnly()" title="Efface toutes les transactions et sync serveur">&#128465; Vider tout</button>
   </div>
 </div>
 
@@ -592,7 +593,32 @@ document.getElementById("fileInput").addEventListener("change",e=>{
   e.target.value="";
 });
 document.getElementById("selectedMonth").addEventListener("change",e=>{selectedMonth=e.target.value;if(monthBalances[selectedMonth]===undefined)monthBalances[selectedMonth]=settings.initialBalance;document.getElementById("opDate").value=dateForMonth(selectedMonth);render()});document.getElementById("startBalance").addEventListener("change",e=>{monthBalances[selectedMonth]=toNumber(e.target.value);render()});document.getElementById("expectedIncomeRemaining").addEventListener("change",e=>{settings.expectedIncomeRemaining=toNumber(e.target.value);render()});document.getElementById("minimumBalance").addEventListener("change",e=>{settings.minimumBalance=toNumber(e.target.value);render()});document.getElementById("opType").addEventListener("change",e=>{document.getElementById("opCategory").disabled=e.target.value==='income';renderCategories()});
-function resetSelectedCycle(){if(!confirm("Effacer les opérations du cycle sélectionné ?"))return;let p=getBudgetPeriod(selectedMonth);transactions=transactions.filter(t=>!(t.date>=p.start&&t.date<p.end));monthBalances[selectedMonth]=settings.initialBalance;render()} function resetAll(){if(!confirm("Remettre tout l'outil à zéro ?"))return;settings={...DEFAULT_SETTINGS};budgets=JSON.parse(JSON.stringify(DEFAULT_BUDGETS));transactions=[];selectedMonth=today().slice(0,7);monthBalances={[selectedMonth]:DEFAULT_SETTINGS.initialBalance};render()}
+function resetSelectedCycle(){if(!confirm("Effacer les opérations du cycle sélectionné ?"))return;let p=getBudgetPeriod(selectedMonth);transactions=transactions.filter(t=>!(t.date>=p.start&&t.date<p.end));monthBalances[selectedMonth]=settings.initialBalance;render()} function resetAll(){if(!confirm("⚠️ Remettre tout à zéro ?\nCela efface toutes les transactions, paramètres et données sur le serveur.\nLes deux utilisateurs seront réinitialisés."))return;
+  // Reset local
+  settings={...DEFAULT_SETTINGS};
+  budgets=JSON.parse(JSON.stringify(DEFAULT_BUDGETS));
+  transactions=[];
+  selectedMonth=today().slice(0,7);
+  monthBalances={[selectedMonth]:DEFAULT_SETTINGS.initialBalance};
+  // Vider localStorage
+  ["bm-settings","bm-budgets","bm-transactions","bm-monthBalances","bm-selectedMonth"].forEach(k=>localStorage.removeItem(k));
+  // Vider Upstash via l'API
+  fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({settings:DEFAULT_SETTINGS,budgets:DEFAULT_BUDGETS,transactions:[],monthBalances:{[today().slice(0,7)]:DEFAULT_SETTINGS.initialBalance},_reset:true})})
+    .then(()=>showSyncStatus("✓ Base vidée","ok"))
+    .catch(()=>showSyncStatus("⚠ Erreur reset serveur","err"));
+  render();
+}
+
+function resetTransactionsOnly(){if(!confirm("Effacer uniquement les transactions ?\nLes paramètres et budgets sont conservés."))return;
+  transactions=[];
+  monthBalances={[selectedMonth]:settings.initialBalance};
+  localStorage.removeItem("bm-transactions");
+  localStorage.removeItem("bm-monthBalances");
+  fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({settings,budgets,transactions:[],monthBalances:{[selectedMonth]:settings.initialBalance}})})
+    .then(()=>showSyncStatus("✓ Transactions vidées","ok"))
+    .catch(()=>showSyncStatus("⚠ Erreur reset serveur","err"));
+  render();
+}
 function runTests(){let tests=[];let sim=simulation();tests.push(["Calcul simulation",Math.abs(sim.totalToSave-901.94)<0.01, euro(sim.totalToSave)]);let sample="04/05/2026;04/05/2026;Bnpp Ere | PRLV SEPA BNPP ERE;Dépenses d'épargne;Epargne;bnpp ere;-100,00";let imp=parseBankExportText(sample);tests.push(["BNPP ERE = épargne",imp[0]?.category==='epargne_existante',imp[0]?.category]);let csv="Date opération;Date valeur;Libellé;Catégorie;Groupe;Libellé simplifié;Montant\n04/05/2026;04/05/2026;Orange | PRLV SEPA ORANGE SA;Téléphonie;Abonnements;orange;-51,99";let imp2=parseBankExportText(csv);tests.push(["CSV avec en-têtes",imp2[0]?.category==='telecom',imp2[0]?.category]);document.getElementById("testsBox").innerHTML='<h2>Tests</h2>'+tests.map(t=>`<p class="${t[1]?'pass':'fail'}">${t[1]?'✅':'❌'} ${t[0]} — ${t[2]}</p>`).join("")}
 let activeTab = "dashboard";
 setInterval(()=>{if(!document.getElementById('testsBox').classList.contains('hidden'))runTests()},1000);document.getElementById("opDate").value=dateForMonth(selectedMonth);render();runTests();
