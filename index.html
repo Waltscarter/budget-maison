@@ -311,11 +311,11 @@ async function pullSync() {
     const j = await r.json();
     if (j.ok && j.data) {
       const d = j.data;
-      if (d.settings) { settings = d.settings; localStorage.setItem("bm-settings", JSON.stringify(d.settings)); }
-      if (d.budgets) { budgets = d.budgets; localStorage.setItem("bm-budgets", JSON.stringify(d.budgets)); }
-      if (d.transactions) { transactions = d.transactions; localStorage.setItem("bm-transactions", JSON.stringify(d.transactions)); }
+      if (d.settings && typeof d.settings === "object") { settings = d.settings; localStorage.setItem("bm-settings", JSON.stringify(d.settings)); }
+      if (Array.isArray(d.budgets) && d.budgets.length > 0) { budgets = d.budgets; localStorage.setItem("bm-budgets", JSON.stringify(budgets)); }
+      if (Array.isArray(d.transactions)) { transactions = d.transactions; localStorage.setItem("bm-transactions", JSON.stringify(transactions)); }
       // selectedMonth = choix local, on ne l'écrase PAS depuis le serveur
-      if (d.monthBalances) { monthBalances = d.monthBalances; localStorage.setItem("bm-monthBalances", JSON.stringify(d.monthBalances)); }
+      if (d.monthBalances && typeof d.monthBalances === "object") { monthBalances = d.monthBalances; localStorage.setItem("bm-monthBalances", JSON.stringify(d.monthBalances)); }
       showSyncStatus("✓ Sync " + (d._savedAt ? new Date(d._savedAt).toLocaleTimeString("fr-FR") : ""), "ok");
       render();
     } else {
@@ -345,7 +345,7 @@ function simulation(){let currentEffort=toNumber(settings.currentRent)+toNumber(
 function getBudgetPeriod(month){let safe=normalizeTransactions(transactions).sort((a,b)=>a.date.localeCompare(b.date));let dates=safe.filter(isSalary).map(x=>x.date).sort();let start=dates.find(d=>monthOf(d)===month);if(!start)return{start:month+"-01",end:addMonths(month+"-01",1),mode:"calendar"};let next=dates.find(d=>d>start);return{start,end:next||addMonths(start,1),mode:"salary"}}
 function txForCycle(month){let p=getBudgetPeriod(month);return normalizeTransactions(transactions).filter(x=>x.date>=p.start&&x.date<p.end)}
 function spentMap(txs){let m={};for(const t of txs){if(t.type!=="expense")continue;m[t.category]=(m[t.category]||0)+toNumber(t.amount)}return m}
-function remainingBudget(map){return budgets.reduce((s,b)=>{let lim=toNumber(b.limit); if(lim<=0)return s; return s+Math.max(0,lim-toNumber(map[b.id]))},0)}
+function remainingBudget(map){if(!Array.isArray(budgets))budgets=DEFAULT_BUDGETS;return budgets.reduce((s,b)=>{let lim=toNumber(b.limit); if(lim<=0)return s; return s+Math.max(0,lim-toNumber(map[b.id]))},0)}
 function forecast(){let period=getBudgetPeriod(selectedMonth);let txs=txForCycle(selectedMonth);let inc=txs.filter(t=>t.type==="income").reduce((s,t)=>s+toNumber(t.amount),0);let exp=txs.filter(t=>t.type==="expense").reduce((s,t)=>s+toNumber(t.amount),0);let map=spentMap(txs);let sim=simulation();let simPaid=toNumber(map[SAVING_CATEGORY]);let simRemain=Math.max(0,sim.totalToSave-simPaid);let start=toNumber(monthBalances[selectedMonth]??settings.initialBalance);let current=start+inc-exp;let rem=remainingBudget(map);let projected=current+toNumber(settings.expectedIncomeRemaining)-rem-simRemain;return {period,monthTransactions:txs,incomePaid:inc,expensesPaid:exp,spentByCategory:map,simulation:sim,simulationAlreadyPaid:simPaid,remainingSimulationSaving:simRemain,remainingBudget:rem,currentBalance:current,projectedEndBalance:projected}}
 
 function detectDelimiter(line){let c={tab:0,semi:0,comma:0},q=false;for(let i=0;i<line.length;i++){let ch=line[i],n=line[i+1];if(ch==='"'&&n==='"'){i++;continue}if(ch==='"')q=!q;if(!q&&ch==='\t')c.tab++;if(!q&&ch===';')c.semi++;if(!q&&ch===',')c.comma++}if(c.tab>=c.semi&&c.tab>=c.comma&&c.tab>0)return'\t';if(c.semi>=c.comma&&c.semi>0)return';';return','}
