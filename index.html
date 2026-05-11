@@ -111,6 +111,7 @@
   .sync-err  { background: #3a1a1a; color: #f44336; border: 1px solid #5e2e2e; }
   .sync-loading { background: #1a2a3a; color: #90caf9; border: 1px solid #2e4e6e; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -136,7 +137,7 @@
   <div class="card">
     <div class="ct">Importer depuis BoursoBank</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:11px">Exporte en CSV depuis BoursoBank, charge le fichier ou copie-colle les lignes depuis Excel.</p>
-    <input type="file" accept=".csv,.txt,.tsv" id="fileInput"/>
+    <input type="file" accept=".csv,.txt,.tsv,.xlsx,.xls" id="fileInput"/>
     <textarea id="importText" placeholder="Ou colle ici les lignes CSV / Excel&#8230;" style="margin-top:9px"></textarea>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:9px">
       <button class="btn btn-p" onclick="importBankOperations()">Importer les op&#233;rations</button>
@@ -366,12 +367,34 @@ function forecast(){
   // DÉPASSEMENTS = dépenses au-delà des budgets définis
   let overBudget=0;
   if(Array.isArray(budgets)){for(const b of budgets){if(toNumber(b.limit)<=0)continue;let spent=toNumber(map[b.id]);let over=Math.max(0,spent-toNumber(b.limit));overBudget+=over;}}
+  // ÉCONOMIES vs BUDGET : somme des budgets non consommés (hors fixes et simulation)
+  // = ce que tu as gardé en ne dépensant pas jusqu'à la limite
+  const FIXED_CATS = ["loyer","diac","mouvement_interne",SAVING_CATEGORY];
+  let savedVsBudget = 0;
+  let lostVsBudget = 0;
+  if(Array.isArray(budgets)){
+    for(const b of budgets){
+      if(FIXED_CATS.includes(b.id)) continue;
+      const lim = toNumber(b.limit);
+      if(lim <= 0) continue;
+      const spent = toNumber(map[b.id]);
+      const diff = lim - spent;
+      if(diff > 0) savedVsBudget += diff; // économie
+      else lostVsBudget += Math.abs(diff); // dépassement
+    }
+  }
+  // PRÉVISIONNEL TEMPS RÉEL = solde réel + entrées attendues - épargne simulation restante
+  // (sans soustraire les budgets restants — juste ce qui est certain)
+  const projectedRealtime = current + toNumber(settings.expectedIncomeRemaining) - simRemain;
   return {
     period,monthTransactions:txs,incomePaid:inc,expensesPaid:exp,spentByCategory:map,
     simulation:sim,simulationAlreadyPaid:simPaid,remainingSimulationSaving:simRemain,
     remainingBudget:rem,currentBalance:current,
-    projectedEndBalance:projectedIfBudgeted, // compatibilité
+    projectedEndBalance:projectedIfBudgeted,
     projectedIfBudgeted,
+    projectedRealtime,
+    savedVsBudget,
+    lostVsBudget,
     overBudget
   };
 }
@@ -394,7 +417,8 @@ function detectImportedCategory({label,bankCategory,bankGroup,simplifiedLabel,am
   // 3. ÉPARGNE SIMULATION MAISON
   if(all.includes("simulation maison")||all.includes("simul maison")||all.includes("epargne simulation"))return SAVING_CATEGORY;
   // Virement depuis compte joint vers livret = épargne simulation si montant significatif
-  if(all.includes("virement depuis boursobank"))return SAVING_CATEGORY;
+  // Virement depuis Boursobank joint : si montant <= 2000€ = épargne simulation, sinon mouvement interne
+  if(all.includes("virement depuis boursobank")){return Math.abs(amount)<=2000?SAVING_CATEGORY:"mouvement_interne";}
 
   // 4. DÉPENSES FIXES IDENTIFIÉES PAR NOM
   // Crédit auto
@@ -514,7 +538,29 @@ function addTransaction(){let amount=toNumber(document.getElementById("opAmount"
 function updateBudget(i,v){budgets=budgets.map(b=>b.id===i?{...b,limit:toNumber(v)}:b);render()} function changeCategory(i,c){transactions=transactions.map(t=>t.id===i&&t.type==='expense'?{...t,category:c}:t);render()} function removeTransaction(i){transactions=transactions.filter(t=>t.id!==i);render()} function toggle(id){document.getElementById(id).classList.toggle('hidden')}
 function clearImport(){document.getElementById("importText").value="";document.getElementById("importMessage").textContent=""}
 function importBankOperations(){let imported=parseBankExportText(document.getElementById("importText").value);if(!imported.length){document.getElementById("importMessage").textContent="Aucune opération reconnue. Importe un CSV BoursoBank ou copie-colle les lignes depuis Excel.";return}let keys=new Set(transactions.map(tKey)),unique=imported.filter(x=>!keys.has(tKey(x)));transactions=[...unique,...transactions];let unk=unique.filter(x=>x.type==='expense'&&x.category==='autre').length;const msg=unique.length===0?`✅ Tout déjà importé — ${imported.length} doublon(s) ignoré(s), aucune nouvelle opération.`:`✅ ${unique.length} nouvelle(s) opération(s) importée(s). ${imported.length-unique.length} doublon(s) ignoré(s).${unk>0?" ⚠️ "+unk+" opération(s) à vérifier (catégorie Autre).":""}`;document.getElementById("importMessage").textContent=msg;if(unique.length>0){if(unique[0]?.date)selectedMonth=monthOf(unique[0].date);save("transactions",transactions);}render()}
-document.getElementById("fileInput").addEventListener("change",e=>{let file=e.target.files[0];if(!file)return;let reader=new FileReader();reader.onload=()=>{document.getElementById("importText").value=String(reader.result||"");document.getElementById("importMessage").textContent=`Fichier ${file.name} chargé. Clique sur “Importer les opérations”.`};reader.onerror=()=>document.getElementById("importMessage").textContent="Impossible de lire le fichier.";reader.readAsText(file,"utf-8");e.target.value=""});
+document.getElementById("fileInput").addEventListener("change",e=>{
+  const file=e.target.files[0]; if(!file)return;
+  const isXlsx=file.name.toLowerCase().endsWith(".xlsx")||file.name.toLowerCase().endsWith(".xls");
+  const reader=new FileReader();
+  if(isXlsx){
+    reader.onload=ev=>{
+      try{
+        const wb=XLSX.read(ev.target.result,{type:"array"});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+        const csv=rows.map(r=>r.map(c=>{const s=String(c==null?"":c);return s.includes(";")||s.includes('"')||s.includes("\n")?'"'+s.replace(/"/g,'""')+'"':s;}).join(";")).join("\n");
+        document.getElementById("importText").value=csv;
+        document.getElementById("importMessage").textContent="Fichier "+file.name+" chargé ("+rows.length+" lignes). Clique sur Importer.";
+      }catch(err){document.getElementById("importMessage").textContent="Erreur lecture Excel : "+err.message;}
+    };
+    reader.readAsArrayBuffer(file);
+  }else{
+    reader.onload=()=>{document.getElementById("importText").value=String(reader.result||"");document.getElementById("importMessage").textContent="Fichier "+file.name+" chargé. Clique sur Importer.";};
+    reader.onerror=()=>document.getElementById("importMessage").textContent="Impossible de lire le fichier.";
+    reader.readAsText(file,"utf-8");
+  }
+  e.target.value="";
+});
 document.getElementById("selectedMonth").addEventListener("change",e=>{selectedMonth=e.target.value;if(monthBalances[selectedMonth]===undefined)monthBalances[selectedMonth]=settings.initialBalance;document.getElementById("opDate").value=dateForMonth(selectedMonth);render()});document.getElementById("startBalance").addEventListener("change",e=>{monthBalances[selectedMonth]=toNumber(e.target.value);render()});document.getElementById("expectedIncomeRemaining").addEventListener("change",e=>{settings.expectedIncomeRemaining=toNumber(e.target.value);render()});document.getElementById("minimumBalance").addEventListener("change",e=>{settings.minimumBalance=toNumber(e.target.value);render()});document.getElementById("opType").addEventListener("change",e=>{document.getElementById("opCategory").disabled=e.target.value==='income';renderCategories()});
 function resetSelectedCycle(){if(!confirm("Effacer les opérations du cycle sélectionné ?"))return;let p=getBudgetPeriod(selectedMonth);transactions=transactions.filter(t=>!(t.date>=p.start&&t.date<p.end));monthBalances[selectedMonth]=settings.initialBalance;render()} function resetAll(){if(!confirm("Remettre tout l'outil à zéro ?"))return;settings={...DEFAULT_SETTINGS};budgets=JSON.parse(JSON.stringify(DEFAULT_BUDGETS));transactions=[];selectedMonth=today().slice(0,7);monthBalances={[selectedMonth]:DEFAULT_SETTINGS.initialBalance};render()}
 function runTests(){let tests=[];let sim=simulation();tests.push(["Calcul simulation",Math.abs(sim.totalToSave-901.94)<0.01, euro(sim.totalToSave)]);let sample="04/05/2026;04/05/2026;Bnpp Ere | PRLV SEPA BNPP ERE;Dépenses d'épargne;Epargne;bnpp ere;-100,00";let imp=parseBankExportText(sample);tests.push(["BNPP ERE = épargne",imp[0]?.category==='epargne_existante',imp[0]?.category]);let csv="Date opération;Date valeur;Libellé;Catégorie;Groupe;Libellé simplifié;Montant\n04/05/2026;04/05/2026;Orange | PRLV SEPA ORANGE SA;Téléphonie;Abonnements;orange;-51,99";let imp2=parseBankExportText(csv);tests.push(["CSV avec en-têtes",imp2[0]?.category==='telecom',imp2[0]?.category]);document.getElementById("testsBox").innerHTML='<h2>Tests</h2>'+tests.map(t=>`<p class="${t[1]?'pass':'fail'}">${t[1]?'✅':'❌'} ${t[0]} — ${t[2]}</p>`).join("")}
@@ -578,41 +624,65 @@ function renderAlerts(f, ok, warn) {
 }
 
 function renderMetricsNew(f, ok, warn) {
-  const cc = ok ? "ok" : warn ? "" : "ng";
-  const bdg = ok ? '<span class="bdg bdg-ok">&#10003; OK</span>' : warn ? '<span class="bdg bdg-w">&#9888; Attention</span>' : '<span class="bdg bdg-d">&#10007; Danger</span>';
-  // M1 : solde réel actuel = ce qui est sur le compte maintenant
-  document.getElementById("m1").innerHTML = '<p>Solde r&#233;el actuel</p><b>' + euro(f.currentBalance) + '</b><small>D&#233;but + entr&#233;es re&#231;ues &#8722; d&#233;penses pay&#233;es</small>';
-  // M2 : déjà dépensé
-  document.getElementById("m2").innerHTML = '<p>D&#233;j&#224; d&#233;pens&#233;</p><b>' + euro(f.expensesPaid) + '</b><small>Ce cycle (hors mouvements internes)</small>';
+  const cc = f.projectedRealtime >= toNumber(settings.minimumBalance) ? "ok" : "ng";
+  // M1 : solde réel actuel
+  document.getElementById("m1").innerHTML =
+    '<p>Solde r&#233;el actuel</p><b>' + euro(f.currentBalance) + '</b>' +
+    '<small>D&#233;but + entr&#233;es re&#231;ues &#8722; d&#233;penses pay&#233;es</small>';
+  // M2 : prévisionnel temps réel (sans budgets restants)
+  document.getElementById("m2").className = "mc " + cc;
+  document.getElementById("m2").innerHTML =
+    '<p>Pr&#233;visionnel fin de cycle</p><b>' + euro(f.projectedRealtime) + '</b>' +
+    '<small>R&#233;el + entr&#233;es attendues &#8722; &#233;pargne simulation</small>';
   // M3 : prévisionnel si budgets respectés
-  const overTxt = f.overBudget > 0 ? ' <small style="color:var(--danger)">dont ' + euro(f.overBudget) + ' de d&#233;passements</small>' : '';
   document.getElementById("m3").className = "mc";
-  document.getElementById("m3").innerHTML = '<p>Pr&#233;visionnel si budgets respect&#233;s</p><b>' + euro(f.projectedIfBudgeted) + '</b><small>R&#233;el &#8722; reste budgets &#8722; &#233;pargne simulation</small>' + overTxt;
-  // M4 : badge global
-  document.getElementById("m4").className = "mc " + cc;
-  document.getElementById("m4").innerHTML = '<p>Reste &#224; payer (budgets)</p><b>' + euro(f.remainingBudget + f.remainingSimulationSaving) + '</b><small>Budgets non consomm&#233;s + simulation</small>' + bdg;
+  document.getElementById("m3").innerHTML =
+    '<p>Si budgets respect&#233;s</p><b>' + euro(f.projectedIfBudgeted) + '</b>' +
+    '<small>Pr&#233;visionnel &#8722; reste des budgets</small>';
+  // M4 : économies ou dépassements vs budgets
+  const hasSaved = f.savedVsBudget > 0;
+  const hasLost = f.lostVsBudget > 0;
+  const econColor = hasSaved && !hasLost ? "ok" : hasLost ? "ng" : "";
+  document.getElementById("m4").className = "mc " + econColor;
+  let econHtml = '<p>&#201;conomies vs budgets</p>';
+  if(hasSaved) econHtml += '<b style="color:var(--ok)">+' + euro(f.savedVsBudget) + '</b><small>Non d&#233;pens&#233; par rapport aux budgets</small>';
+  if(hasLost) econHtml += (hasSaved?'<br>':'<b>') + '<span style="color:var(--danger)">&#8722;' + euro(f.lostVsBudget) + ' de d&#233;passements</span>';
+  if(!hasSaved && !hasLost) econHtml += '<b>&#8212;</b><small>Budgets exactement consomm&#233;s</small>';
+  document.getElementById("m4").innerHTML = econHtml;
 }
 
 function renderForecastNew(f) {
   const sb = monthBalances[selectedMonth] != null ? monthBalances[selectedMonth] : settings.initialBalance;
-  const overLine = f.overBudget > 0
-    ? '<div class="fline ex" style="opacity:.7"><span>&#9888; D&#233;passements de budgets</span><b style="color:var(--danger)">+' + euro(f.overBudget) + '</b></div>'
+  const savedLine = f.savedVsBudget > 0
+    ? '<div class="fline in"><span>+ &#201;conomies r&#233;alis&#233;es (budgets non consomm&#233;s)</span><b style="color:var(--ok)">+' + euro(f.savedVsBudget) + '</b></div>'
+    : '';
+  const lostLine = f.lostVsBudget > 0
+    ? '<div class="fline ex"><span>&#8722; D&#233;passements de budgets</span><b style="color:var(--danger)">&#8722;' + euro(f.lostVsBudget) + '</b></div>'
     : '';
   document.getElementById("forecastBox").innerHTML =
-    // --- SITUATION RÉELLE ---
-    '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Situation r&#233;elle</div>' +
+    // RÉEL ACTUEL
+    '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Situation r&#233;elle maintenant</div>' +
     '<div class="fline"><span>Solde d&#233;but du cycle</span><b>' + euro(sb) + '</b></div>' +
     '<div class="fline in"><span>+ Entr&#233;es re&#231;ues</span><b style="color:var(--ok)">' + euro(f.incomePaid) + '</b></div>' +
     '<div class="fline ex"><span>&#8722; D&#233;penses pay&#233;es</span><b style="color:var(--danger)">' + euro(f.expensesPaid) + '</b></div>' +
-    '<div class="fline tot" style="background:rgba(255,255,255,.04)"><span>= Solde r&#233;el actuel</span><b>' + euro(f.currentBalance) + '</b></div>' +
+    '<div class="fline tot" style="background:rgba(255,255,255,.06)"><span>= Solde r&#233;el actuel</span><b>' + euro(f.currentBalance) + '</b></div>' +
     '<div style="height:1px;background:rgba(255,255,255,.07);margin:10px 0"></div>' +
-    // --- PRÉVISIONNEL ---
+    // PRÉVISIONNEL TEMPS RÉEL
     '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Pr&#233;visionnel fin de cycle</div>' +
     '<div class="fline in"><span>+ Entr&#233;es attendues restantes</span><b style="color:var(--ok)">' + euro(settings.expectedIncomeRemaining) + '</b></div>' +
-    '<div class="fline ex"><span>&#8722; Reste des budgets &#224; payer</span><b style="color:var(--danger)">' + euro(f.remainingBudget) + '</b></div>' +
     '<div class="fline ex"><span>&#8722; &#201;pargne simulation restante</span><b style="color:var(--danger)">' + euro(f.remainingSimulationSaving) + '</b></div>' +
-    overLine +
-    '<div class="fline tot"><span>= Pr&#233;visionnel si budgets respect&#233;s</span><b>' + euro(f.projectedIfBudgeted) + '</b></div>';
+    '<div class="fline tot"><span>= Pr&#233;visionnel temps r&#233;el</span><b>' + euro(f.projectedRealtime) + '</b></div>' +
+    '<div style="height:1px;background:rgba(255,255,255,.07);margin:10px 0"></div>' +
+    // ÉCONOMIES VS BUDGETS
+    '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Si budgets respect&#233;s</div>' +
+    '<div class="fline ex"><span>&#8722; Reste des budgets &#224; consommer</span><b style="color:var(--danger)">' + euro(f.remainingBudget) + '</b></div>' +
+    '<div class="fline tot" style="opacity:.8"><span>= Pr&#233;visionnel si tout consomm&#233;</span><b>' + euro(f.projectedIfBudgeted) + '</b></div>' +
+    (f.savedVsBudget > 0 || f.lostVsBudget > 0 ?
+      '<div style="height:1px;background:rgba(255,255,255,.07);margin:10px 0"></div>' +
+      '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:4px">&#201;conomies vs budgets</div>' +
+      savedLine + lostLine +
+      '<div class="fline tot" style="' + (f.savedVsBudget > f.lostVsBudget ? 'color:var(--ok)' : 'color:var(--danger)') + '"><span>= Net &#233;conomis&#233; / perdu</span><b>' + euro(f.savedVsBudget - f.lostVsBudget) + '</b></div>'
+      : '');
 }
 
 function renderSimMiniNew(f) {
