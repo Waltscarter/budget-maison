@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Budget Maison v2</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--danger:#f85149;--ok:#3fb950;--accent:#f0a500;--blue:#58a6ff;--s2:#21262d;--radius:13px}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"DM Sans",Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    .hdr{background:linear-gradient(135deg,#1a1f2e,#161b22);border-bottom:1px solid var(--border);padding:16px 26px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:100}
+    .hdr-icon{width:38px;height:38px;border-radius:11px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+    .hdr h1{font-family:"DM Serif Display",serif;font-size:20px;font-weight:400}
+    .hdr-sub{font-size:12px;color:var(--muted);margin-top:2px}
+    .hdr-l{display:flex;align-items:center;gap:11px}
+    .hdr-r{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+    .btn{border:none;border-radius:9px;padding:8px 13px;font:600 12px "DM Sans",Arial,sans-serif;cursor:pointer;transition:all .15s}
+    .btn-p{background:var(--accent);color:#000}
+    .btn-p:hover{filter:brightness(1.1)}
+    .btn-s{background:var(--s2);color:var(--text);border:1px solid var(--border)}
+    .btn-s:hover{background:var(--border)}
+    .btn-g{background:transparent;color:var(--muted);padding:7px 11px}
+    .btn-g:hover{color:var(--text)}
+    .btn-d{background:transparent;color:var(--danger);border:1px solid var(--danger);font-size:12px;padding:6px 11px}
+    .tabs{display:flex;gap:2px;padding:0 26px;border-bottom:1px solid var(--border);overflow-x:auto}
+    .tab{padding:10px 16px;font:500 13px "DM Sans",sans-serif;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s}
+    .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+    .tab:hover:not(.active){color:var(--text)}
+    .w{max-width:1280px;margin:0 auto;padding:20px 26px}
+    .panel{display:none}
+    .panel.active{display:block;animation:fi .2s ease}
+    @keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:17px;margin-top:13px}
+    .ct{font-family:"DM Serif Display",serif;font-size:15px;font-weight:400;margin-bottom:13px}
+    .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:13px}
+    .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:13px}
+    .g2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:13px}
+    .ga{display:grid;grid-template-columns:repeat(auto-fill,minmax(265px,1fr));gap:12px}
+    .mc{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:15px 17px;position:relative;overflow:hidden}
+    .mc::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent)}
+    .mc.ok::before{background:var(--ok)}
+    .mc.ng::before{background:var(--danger)}
+    .mc.bl::before{background:var(--blue)}
+    .mc p{margin:0;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+    .mc b{display:block;font-family:"DM Serif Display",serif;font-size:24px;margin:7px 0 3px}
+    .mc small{color:var(--muted);font-size:11px}
+    .bdg{display:inline-flex;align-items:center;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600;margin-top:3px}
+    .bdg-ok{background:rgba(63,185,80,.15);color:var(--ok)}
+    .bdg-w{background:rgba(240,165,0,.15);color:var(--accent)}
+    .bdg-d{background:rgba(248,81,73,.15);color:var(--danger)}
+    label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block}
+    input,select,textarea{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;color:var(--text);font:400 13px "DM Sans",sans-serif;margin-top:4px;transition:border-color .15s}
+    input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+    select option{background:var(--s2)}
+    textarea{min-height:100px;resize:vertical}
+    .flines{display:flex;flex-direction:column;gap:6px}
+    .fline{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:9px;background:var(--s2);font-size:13px}
+    .fline.in{background:rgba(63,185,80,.07);border:1px solid rgba(63,185,80,.18)}
+    .fline.ex{background:rgba(248,81,73,.07);border:1px solid rgba(248,81,73,.18)}
+    .fline.tot{background:linear-gradient(135deg,var(--accent),#d4890a);color:#000;font-weight:700;border-radius:10px}
+    .pbar{height:5px;background:var(--border);border-radius:999px;overflow:hidden;margin-top:7px}
+    .pf{height:100%;border-radius:999px;background:var(--ok);transition:width .3s}
+    .pf.ov{background:var(--danger)}
+    .pf.ac{background:var(--accent)}
+    .bc{border:1px solid var(--border);border-radius:var(--radius);padding:13px;background:var(--s2)}
+    .bh{display:flex;justify-content:space-between;align-items:flex-start;gap:7px;margin-bottom:8px}
+    .bh input{width:75px;text-align:right;margin-top:0;padding:3px 6px;font-size:12px;font-weight:700}
+    .bn{font-size:13px;font-weight:600}
+    .ba{display:flex;gap:9px;margin-top:2px;font-size:11px}
+    .bop{margin-top:8px;border-top:1px solid var(--border);padding-top:8px}
+    .opi{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:11px;border-bottom:1px solid rgba(48,54,61,.4)}
+    .opi:last-child{border-bottom:none}
+    .opl{color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .opa{font-weight:600;margin:0 5px;white-space:nowrap}
+    .ops select{background:var(--s2);border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:2px 3px;font-size:10px;width:auto;margin-top:0}
+    .tw{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{padding:8px 10px;text-align:left;color:var(--muted);font:600 10px "DM Sans",sans-serif;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+    td{padding:9px 10px;border-bottom:1px solid rgba(48,54,61,.4);vertical-align:middle}
+    tr:hover td{background:rgba(33,38,45,.5)}
+    td.am{text-align:right;font-weight:700}
+    .iv{color:var(--ok)}.ev{color:var(--danger)}
+    .fg{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;align-items:end}
+    .al{display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:10px;margin-bottom:11px;font-size:13px}
+    .al-w{background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.25);color:var(--accent)}
+    .al-d{background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.25);color:var(--danger)}
+    .al-o{background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.25);color:var(--ok)}
+    .ci{display:flex;align-items:center;gap:7px;padding:8px 12px;background:var(--s2);border-radius:9px;font-size:12px;color:var(--muted);margin-bottom:12px}
+    .cd{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
+    .sb{background:rgba(240,165,0,.05);border:1px solid rgba(240,165,0,.2);border-radius:var(--radius);padding:16px}
+    .sl{display:flex;justify-content:space-between;padding:8px 11px;border-radius:8px;background:var(--s2);font-size:13px;margin-bottom:5px}
+    .stot{background:var(--accent);color:#000;font-weight:700}
+    .sr{text-align:center;margin-top:12px}
+    .srv{font-family:"DM Serif Display",serif;font-size:34px;color:var(--accent)}
+    .pill{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600}
+    .pi{background:rgba(63,185,80,.15);color:var(--ok)}
+    .pe{background:rgba(248,81,73,.15);color:var(--danger)}
+    .hidden{display:none!important}
+    .dvd{border:none;border-top:1px solid var(--border);margin:13px 0}
+    .tests .pass{color:var(--ok)}.tests .fail{color:var(--danger)}
+    @media(max-width:900px){.w{padding:13px}.hdr{padding:12px 13px}.tabs{padding:0 13px}.g4,.g3,.g2{grid-template-columns:1fr}}
+  
+  .sync-status {
+    position: fixed; top: 8px; right: 12px; z-index: 999;
+    font-size: 11px; padding: 3px 10px; border-radius: 20px;
+    font-weight: 600; letter-spacing: .3px; pointer-events: none;
+    transition: opacity .4s;
+  }
+  .sync-ok   { background: #1a3a1a; color: #4caf50; border: 1px solid #2e5e2e; }
+  .sync-err  { background: #3a1a1a; color: #f44336; border: 1px solid #5e2e2e; }
+  .sync-loading { background: #1a2a3a; color: #90caf9; border: 1px solid #2e4e6e; }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-l">
+    <div class="hdr-icon">&#127968;</div>
+    <div>
+      <h1>Budget Maison</h1>
+      <div class="hdr-sub">Cycle bas&#233; sur virement <b>Euro Disney</b> &middot; BoursoBank</div>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <select id="selectedMonth" style="width:auto;margin-top:0;padding:8px 12px;font-weight:600"></select>
+    <button class="btn btn-s" onclick="toggle('importBox')">&#8679; Importer CSV</button>
+    <span id="syncStatus" class="sync-status sync-loading">↻ Sync...</span>
+    <button class="btn btn-s" onclick="pullSync()" title="Recharger depuis le serveur">&#8635; Sync</button>
+    <button class="btn btn-g" onclick="toggle('testsBox')">Tests</button>
+    <button class="btn btn-d" onclick="resetSelectedCycle()">R&#233;init cycle</button>
+  </div>
+</div>
+
+<div id="importBox" class="hidden" style="padding:0 26px;margin-top:10px">
+  <div class="card">
+    <div class="ct">Importer depuis BoursoBank</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:11px">Exporte en CSV depuis BoursoBank, charge le fichier ou copie-colle les lignes depuis Excel.</p>
+    <input type="file" accept=".csv,.txt,.tsv" id="fileInput"/>
+    <textarea id="importText" placeholder="Ou colle ici les lignes CSV / Excel&#8230;" style="margin-top:9px"></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:9px">
+      <button class="btn btn-p" onclick="importBankOperations()">Importer les op&#233;rations</button>
+      <button class="btn btn-s" onclick="clearImport()">Vider</button>
+      <span id="importMessage" style="font-size:13px;color:var(--muted)"></span>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:8px">Les doublons (m&#234;me date + libell&#233; + montant) sont ignor&#233;s automatiquement.</p>
+  </div>
+</div>
+
+<div id="testsBox" class="hidden" style="padding:0 26px;margin-top:10px">
+  <div class="card tests" id="testsContent"></div>
+</div>
+
+<div class="tabs" style="margin-top:10px">
+  <div class="tab active" onclick="showTab('dashboard')">&#128202; Tableau de bord</div>
+  <div class="tab" onclick="showTab('saisie')">&#9999;&#65039; Saisir</div>
+  <div class="tab" onclick="showTab('budgets')">&#128230; Budgets</div>
+  <div class="tab" onclick="showTab('historique')">&#128203; Historique</div>
+  <div class="tab" onclick="showTab('maison')">&#127961; Simulation maison</div>
+  <div class="tab" onclick="showTab('parametres')">&#9881;&#65039; Param&#232;tres</div>
+</div>
+
+<div class="w">
+
+<!-- DASHBOARD -->
+<div id="panel-dashboard" class="panel active">
+  <div id="alertsBox"></div>
+  <div class="ci"><div class="cd"></div><span id="periodText">Chargement&#8230;</span></div>
+  <div class="g4"><div id="m1" class="mc bl"></div><div id="m2" class="mc"></div><div id="m3" class="mc"></div><div id="m4" class="mc"></div></div>
+  <div class="g2">
+    <div class="card"><div class="ct">Pr&#233;visionnel du cycle</div><div id="forecastBox" class="flines"></div></div>
+    <div class="card" id="simMiniBox"></div>
+  </div>
+  <div class="card"><div class="ct">R&#233;sum&#233; par cat&#233;gorie</div><div id="summaryChart"></div></div>
+  <div class="g2">
+    <div class="card">
+      <div class="ct">R&#233;glages rapides</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">
+        <div><label>Solde d&#233;but du cycle</label><input type="text" id="startBalance" onchange="onStartBalanceChange()"/></div>
+        <div><label>Entr&#233;es pr&#233;vues restantes</label><input type="text" id="expectedIncomeRemaining" onchange="onExpectedChange()"/></div>
+        <div><label>Plancher de s&#233;curit&#233;</label><input type="text" id="minimumBalance" onchange="onMinBalanceChange()"/></div>
+        <div><label>Date de l'op&#233;ration suivante</label><input type="date" id="opDate"/></div>
+      </div>
+    </div>
+    <div class="card"><div class="ct">Ajouter vite une op&#233;ration</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end">
+        <div><label>Type</label><select id="opType" onchange="onTypeChange()"><option value="expense">D&#233;pense</option><option value="income">Entr&#233;e</option></select></div>
+        <div><label>Cat&#233;gorie</label><select id="opCategory"></select></div>
+        <div><label>Libell&#233;</label><input type="text" id="opLabel" placeholder="Libell&#233;"/></div>
+        <div><label>Montant (&#8364;)</label><input type="text" id="opAmount" placeholder="0,00"/></div>
+      </div>
+      <button class="btn btn-p" style="width:100%;margin-top:10px" onclick="addTransaction()">+ Ajouter l'op&#233;ration</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAISIE -->
+<div id="panel-saisie" class="panel">
+  <div class="card"><div class="ct">Saisir une op&#233;ration</div>
+    <div class="fg">
+      <div><label>Date</label><input type="date" id="opDate2"/></div>
+      <div><label>Type</label><select id="opType2" onchange="onTypeChange2()"><option value="expense">D&#233;pense pay&#233;e</option><option value="income">Entr&#233;e re&#231;ue</option></select></div>
+      <div><label>Cat&#233;gorie</label><select id="opCategory2"></select></div>
+      <div><label>Libell&#233;</label><input type="text" id="opLabel2" placeholder="Libell&#233;"/></div>
+      <div><label>Montant (&#8364;)</label><input type="text" id="opAmount2" placeholder="0,00"/></div>
+      <div style="display:flex;align-items:flex-end"><button class="btn btn-p" style="width:100%" onclick="addTransaction2()">Ajouter &#10003;</button></div>
+    </div>
+  </div>
+  <div style="margin-top:13px" id="lastOpsBox"></div>
+</div>
+
+<!-- BUDGETS -->
+<div id="panel-budgets" class="panel">
+  <p style="font-size:13px;color:var(--muted);margin-bottom:13px">Cliquez sur le montant pour modifier un budget. Les barres montrent pay&#233; / limite.</p>
+  <div class="ga" id="budgetDetails"></div>
+</div>
+
+<!-- HISTORIQUE -->
+<div id="panel-historique" class="panel">
+  <div class="card"><div class="ct">Historique des op&#233;rations du cycle</div>
+    <div class="tw"><table><thead><tr><th>Date</th><th>Type</th><th>Cat&#233;gorie</th><th>Libell&#233;</th><th class="am">Montant</th><th></th></tr></thead><tbody id="historyRows"></tbody></table></div>
+  </div>
+</div>
+
+<!-- MAISON -->
+<div id="panel-maison" class="panel">
+  <div class="g2">
+    <div class="sb">
+      <div style="font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:3px">Simulation maison &#127961;</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Ce que tu dois mettre de c&#244;t&#233; chaque cycle pour t'habituer au vrai co&#251;t</div>
+      <div id="cycleAlertBox" style="margin-bottom:12px"></div>
+      <div id="simLines"></div>
+      <div class="sr"><div class="srv" id="simRemainVal">&#8212;</div><div style="font-size:12px;color:var(--muted)">reste &#224; virer ce cycle</div></div>
+    </div>
+    <div class="card"><div class="ct">Analyse logique &#128202;</div><div id="logicAnalysis"></div></div>
+  </div>
+  <div class="card" style="margin-top:13px"><div class="ct">Virements &#233;pargne simulation saisis</div><div id="simOpsBox"></div></div>
+</div>
+
+<!-- PARAMETRES -->
+<div id="panel-parametres" class="panel">
+  <div class="g2">
+    <div class="card"><div class="ct">Param&#232;tres financiers</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:11px" id="settingsBox"></div></div>
+    <div class="card">
+      <div class="ct">Cycle s&#233;lectionn&#233;</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div><label>Solde d&#233;but du cycle</label><input type="text" id="startBalance2" onchange="monthBalances[selectedMonth]=toNumber(this.value);save('monthBalances',monthBalances);render()"/></div>
+        <div><label>Entr&#233;es pr&#233;vues restantes</label><input type="text" id="expectedIncomeRemaining2" onchange="settings.expectedIncomeRemaining=toNumber(this.value);render()"/></div>
+        <div><label>Plancher de s&#233;curit&#233; (€)</label><input type="text" id="minimumBalance2" onchange="settings.minimumBalance=toNumber(this.value);render()"/></div><div><label>Objectif &#233;pargne (€)</label><input type="text" id="savingsGoal" onchange="settings.savingsGoal=toNumber(this.value);render()"/></div><div><label>En combien de cycles</label><input type="text" id="savingsGoalMonths" onchange="settings.savingsGoalMonths=toNumber(this.value);render()"/></div>
+        <hr class="dvd">
+        <button class="btn btn-d" onclick="resetAll()">Tout r&#233;initialiser</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /w -->
+
+<script>
+const DEFAULT_SETTINGS={initialBalance:4582,targetIncome:4200,expectedIncomeRemaining:0,currentRent:973.88,currentDiac:248.06,simulatedHouseCredit:1600,ownerCostsProvision:300,securitySaving:200,minimumBalance:0,savingsGoal:5000,savingsGoalMonths:6};
+const DEFAULT_BUDGETS=[{id:"courses_costco",label:"Courses / Costco",limit:300},{id:"courses_complement",label:"Compléments courses",limit:250},{id:"hygiene_maison",label:"Hygiène / maison",limit:50},{id:"ecole",label:"École",limit:300},{id:"sante_enfant",label:"Santé / suivi enfant",limit:180},{id:"sante_beaute",label:"Santé / beauté adulte",limit:60},{id:"telecom",label:"Internet / téléphones",limit:75},{id:"assurances",label:"Assurances",limit:120},{id:"energie_eau",label:"Énergie / eau",limit:80},{id:"transport",label:"Essence / péage / parking",limit:180},{id:"grands_trajets",label:"Grands trajets / vacances",limit:70},{id:"repas_travail",label:"Repas travail / snacks",limit:50},{id:"restos_sorties",label:"Restos / sorties",limit:50},{id:"abonnements_digitaux",label:"Abonnements numériques",limit:25},{id:"dons_cotisations",label:"Dons / cotisations",limit:30},{id:"jeux_fdj",label:"Jeux / FDJ",limit:0},{id:"services_courrier",label:"Services / courrier",limit:30},{id:"shopping",label:"Shopping / Amazon / Temu / Vinted",limit:70},{id:"paypal_4x",label:"PayPal / paiements 4x",limit:0},{id:"epargne_existante",label:"Épargne existante / PEE",limit:100},{id:"imprevus",label:"Imprévus",limit:100},{id:"loyer",label:"Loyer actuel",limit:973.88},{id:"diac",label:"Crédit auto DIAC",limit:248.06},{id:"autre",label:"Autre",limit:0}];
+const SAVING_CATEGORY="epargne_simulation"; const SALARY_MARKER="euro disney";
+let settings=load("settings",DEFAULT_SETTINGS), budgets=load("budgets",DEFAULT_BUDGETS), transactions=load("transactions",[]), selectedMonth=load("selectedMonth",today().slice(0,7)), monthBalances=load("monthBalances",{[today().slice(0,7)]:DEFAULT_SETTINGS.initialBalance});
+
+// ---- Sync API ----
+const API_URL = "/api/sync";
+let _syncTimer = null;
+let _localCache = {};
+
+function load(k, f) {
+  try {
+    const raw = localStorage.getItem("bm-" + k);
+    return raw ? JSON.parse(raw) : f;
+  } catch { return f; }
+}
+
+function save(k, v) {
+  localStorage.setItem("bm-" + k, JSON.stringify(v));
+  _localCache[k] = v;
+  scheduleSync();
+}
+
+function scheduleSync() {
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(pushSync, 1200);
+}
+
+async function pushSync() {
+  try {
+    const payload = {
+      settings, budgets, transactions, monthBalances
+      // selectedMonth est local à chaque utilisateur, pas synchronisé
+    };
+    const r = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const j = await r.json();
+    if (j.ok) showSyncStatus("✓ Sync " + new Date(j.savedAt).toLocaleTimeString("fr-FR"), "ok");
+    else showSyncStatus("⚠ Erreur sync", "err");
+  } catch (e) {
+    showSyncStatus("⚠ Hors ligne", "err");
+  }
+}
+
+async function pullSync() {
+  try {
+    showSyncStatus("↻ Chargement...", "loading");
+    const r = await fetch(API_URL);
+    const j = await r.json();
+    if (j.ok && j.data) {
+      const d = j.data;
+      if (d.settings) { settings = d.settings; localStorage.setItem("bm-settings", JSON.stringify(d.settings)); }
+      if (d.budgets) { budgets = d.budgets; localStorage.setItem("bm-budgets", JSON.stringify(d.budgets)); }
+      if (d.transactions) { transactions = d.transactions; localStorage.setItem("bm-transactions", JSON.stringify(d.transactions)); }
+      // selectedMonth = choix local, on ne l'écrase PAS depuis le serveur
+      if (d.monthBalances) { monthBalances = d.monthBalances; localStorage.setItem("bm-monthBalances", JSON.stringify(d.monthBalances)); }
+      showSyncStatus("✓ Sync " + (d._savedAt ? new Date(d._savedAt).toLocaleTimeString("fr-FR") : ""), "ok");
+      render();
+    } else {
+      showSyncStatus("✓ Données locales", "ok");
+    }
+  } catch (e) {
+    showSyncStatus("⚠ Hors ligne – données locales", "err");
+  }
+}
+
+function showSyncStatus(msg, type) {
+  const el = document.getElementById("syncStatus");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = "sync-status sync-" + type;
+}
+function id(){return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`} function today(){return new Date().toISOString().slice(0,10)} function dateForMonth(m){return m===today().slice(0,7)?today():m+"-01"} function monthOf(d){return String(d||"").slice(0,7)}
+function toNumber(v){if(v==null||v==="")return 0;let s=String(v).trim().replace("€","").replace(/[\s\u00A0]/g,"");if(s.includes(",")&&s.includes("."))s=s.replace(/\./g,"").replace(",",".");else s=s.replace(",",".");let n=Number(s);return Number.isFinite(n)?n:0} function euro(v){return new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:2}).format(toNumber(v))}
+function norm(t){return String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim()} function normDate(v){let r=String(v||"").trim();if(!r)return today();let iso=r.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);if(iso)return `${iso[1]}-${iso[2].padStart(2,"0")}-${iso[3].padStart(2,"0")}`;let fr=r.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);if(fr)return `${fr[3]}-${fr[2].padStart(2,"0")}-${fr[1].padStart(2,"0")}`;return r.slice(0,10)}
+function normalizeTransactions(a){if(!Array.isArray(a))return[];return a.filter(x=>x&&typeof x==="object").map(x=>({id:x.id||id(),date:normDate(x.date),type:x.type==="income"?"income":"expense",category:String(x.category||"autre"),label:String(x.label||"Opération"),amount:Math.abs(toNumber(x.amount))})).filter(x=>x.amount>=0)}
+function tKey(t){return [t.date,norm(t.label),toNumber(t.amount).toFixed(2),t.type].join("|")}
+function addMonths(dateString,months){let d=new Date(dateString+"T00:00:00");d.setMonth(d.getMonth()+months);return d.toISOString().slice(0,10)}
+function isSalary(t){return t.type==="income"&&norm(t.label).includes(SALARY_MARKER)}
+function budgetById(i){return budgets.find(b=>b.id===i)} function allCategoriesHtml(val){let html=`<option value="${SAVING_CATEGORY}">Épargne simulation maison</option>`;for(const b of budgets)html+=`<option value="${b.id}" ${b.id===val?"selected":""}>${escapeHtml(b.label)}</option>`;return html}
+function escapeHtml(s){return String(s||"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m]))}
+function simulation(){let currentEffort=toNumber(settings.currentRent)+toNumber(settings.currentDiac);let maisonTotal=toNumber(settings.simulatedHouseCredit)+toNumber(settings.ownerCostsProvision)+toNumber(settings.securitySaving);let totalToSave=Math.max(0,maisonTotal-currentEffort);return {currentHousingEffort:currentEffort,maisonTotal:maisonTotal,totalToSave:totalToSave}}
+function getBudgetPeriod(month){let safe=normalizeTransactions(transactions).sort((a,b)=>a.date.localeCompare(b.date));let dates=safe.filter(isSalary).map(x=>x.date).sort();let start=dates.find(d=>monthOf(d)===month);if(!start)return{start:month+"-01",end:addMonths(month+"-01",1),mode:"calendar"};let next=dates.find(d=>d>start);return{start,end:next||addMonths(start,1),mode:"salary"}}
+function txForCycle(month){let p=getBudgetPeriod(month);return normalizeTransactions(transactions).filter(x=>x.date>=p.start&&x.date<p.end)}
+function spentMap(txs){let m={};for(const t of txs){if(t.type!=="expense")continue;m[t.category]=(m[t.category]||0)+toNumber(t.amount)}return m}
+function remainingBudget(map){return budgets.reduce((s,b)=>{let lim=toNumber(b.limit); if(lim<=0)return s; return s+Math.max(0,lim-toNumber(map[b.id]))},0)}
+function forecast(){let period=getBudgetPeriod(selectedMonth);let txs=txForCycle(selectedMonth);let inc=txs.filter(t=>t.type==="income").reduce((s,t)=>s+toNumber(t.amount),0);let exp=txs.filter(t=>t.type==="expense").reduce((s,t)=>s+toNumber(t.amount),0);let map=spentMap(txs);let sim=simulation();let simPaid=toNumber(map[SAVING_CATEGORY]);let simRemain=Math.max(0,sim.totalToSave-simPaid);let start=toNumber(monthBalances[selectedMonth]??settings.initialBalance);let current=start+inc-exp;let rem=remainingBudget(map);let projected=current+toNumber(settings.expectedIncomeRemaining)-rem-simRemain;return {period,monthTransactions:txs,incomePaid:inc,expensesPaid:exp,spentByCategory:map,simulation:sim,simulationAlreadyPaid:simPaid,remainingSimulationSaving:simRemain,remainingBudget:rem,currentBalance:current,projectedEndBalance:projected}}
+
+function detectDelimiter(line){let c={tab:0,semi:0,comma:0},q=false;for(let i=0;i<line.length;i++){let ch=line[i],n=line[i+1];if(ch==='"'&&n==='"'){i++;continue}if(ch==='"')q=!q;if(!q&&ch==='\t')c.tab++;if(!q&&ch===';')c.semi++;if(!q&&ch===',')c.comma++}if(c.tab>=c.semi&&c.tab>=c.comma&&c.tab>0)return'\t';if(c.semi>=c.comma&&c.semi>0)return';';return','}
+function parseLine(line,d){let cells=[],cur="",q=false;for(let i=0;i<line.length;i++){let ch=line[i],n=line[i+1];if(ch==='"'&&n==='"'){cur+='"';i++;continue}if(ch==='"'){q=!q;continue}if(!q&&ch===d){cells.push(cur.trim());cur="";continue}cur+=ch}cells.push(cur.trim());return cells}
+function splitLine(line){return parseLine(line,detectDelimiter(line))}
+function headerIdx(cols){let h=cols.map(norm),find=p=>h.findIndex(p);let date=find(x=>x.includes("date")&&!x.includes("valeur")),lab=find(x=>x.includes("libelle")||x.includes("operation")||x.includes("description")),cat=find(x=>x.includes("categorie")&&!x.includes("sous")),grp=find(x=>x.includes("groupe")||x.includes("famille")||x.includes("sous categorie")),simp=find(x=>x.includes("simplifie")),amt=find(x=>(x.includes("montant")||x==="amount")&&!x.includes("solde")&&!x.includes("balance"));return{hasHeader:date>=0&&amt>=0,dateIndex:date>=0?date:0,labelIndex:lab>=0?lab:2,categoryIndex:cat>=0?cat:3,groupIndex:grp>=0?grp:4,simplifiedLabelIndex:simp>=0?simp:5,amountIndex:amt>=0?amt:6}}
+function detectImportedCategory({label,bankCategory,bankGroup,simplifiedLabel,amount}){const all=norm(`${label} ${bankCategory} ${bankGroup} ${simplifiedLabel}`);if(amount>0)return"revenus"; if(all.includes("simulation maison")||all.includes("epargne simulation")||all.includes("virement livret a")||all.includes("virement vers livret"))return SAVING_CATEGORY; if(all.includes("diac"))return"diac"; if(all.includes("edf")||all.includes("engie")||all.includes("la bellenergie")||all.includes("energie")||all.includes("electricite")||all.includes("gaz")||all.includes("fuel")||all.includes("chauffage")||all.includes("veolia")||all.includes("suez")||all.includes("eau "))return"energie_eau"; if(all.includes("chq")||all.includes("cheque"))return"imprevus"; if(all.includes("ruf")||all.includes("loyer"))return"loyer"; if(all.includes("ensemble scolaire")||all.includes("education")||all.includes("etudes")||all.includes("keep school")||all.includes("maurice rondeau")||all.includes("maurice rond"))return"ecole"; if(all.includes("ergotherapeute")||all.includes("melanie au")||all.includes("logico maths"))return"sante_enfant"; if(all.includes("qare")||all.includes("doctolib")||all.includes("maiiia")||all.includes("maiia")||all.includes("pharma")||all.includes("pharmaval")||all.includes("phcie")||all.includes("medecin")||all.includes("docteur")||all.includes("dhiab")||all.includes("lethiec")||all.includes("grand optical")||all.includes("sante")||all.includes("planity")||all.includes("institut ly")||all.includes("bar a ongles")||all.includes("aphrodite")||all.includes("sp nature yves"))return"sante_beaute"; if(all.includes("orange")||all.includes("telephonie")||all.includes("internet")||all.includes("fibre")||all.includes("mobile"))return"telecom"; if(all.includes("macif")||all.includes("assurance"))return"assurances"; if(all.includes("navigo")||all.includes("sanef")||all.includes("sapn")||all.includes("cofiroute")||all.includes("sncf")||all.includes("ouigo")||all.includes("ratp")||all.includes("sncb")||all.includes("avia")||all.includes("esso")||all.includes("total")||all.includes("station")||all.includes("parking")||all.includes("transport")||all.includes("auto moto")||all.includes("entretien reparation")||all.includes("davidson")||all.includes("a one garage")||all.includes("autobedrijf")||all.includes("lavage"))return"transport"; if(all.includes("sodexo")||all.includes("relay")||all.includes("lyovel")||all.includes("lamaisonlyove")||all.includes("jes distribution")||all.includes("frais professionnel")||all.includes("pause cafe"))return"repas_travail"; if(all.includes("mcdonald")||all.includes("mc donald")||all.includes("kfc")||all.includes("subway")||all.includes("autogrill")||all.includes("restaurant")||all.includes("cinema")||all.includes("gaumont")||all.includes("zaza")||all.includes("goma")||all.includes("asuka")||all.includes("bussy zhu")||all.includes("villa pompei")||all.includes("fumoir val europe")||all.includes("pizzeria")||all.includes("le comptoir")||all.includes("3 brasseurs")||all.includes("loisirs"))return"restos_sorties"; if(all.includes("ticketmaster")||all.includes("billetweb")||all.includes("lw billetweb")||all.includes("airbnb")||all.includes("hotel")||all.includes("lelysee")||all.includes("chambord")||all.includes("train thurdoller")||all.includes("gl strasbourg")||all.includes("sncbppsewebprod"))return"grands_trajets"; if(all.includes("paroisse")||all.includes("conseil fabrique")||all.includes("association dioce")||all.includes("cfdt")||all.includes("cclv"))return"dons_cotisations"; if(all.includes("fdj")||all.includes("betm")||all.includes("bet m"))return"jeux_fdj"; if(all.includes("apple com bill")||all.includes("apple")||all.includes("amazon prime")||all.includes("disney+"))return"abonnements_digitaux"; if(all.includes("la poste")||all.includes("fedex")||all.includes("dhl")||all.includes("ups"))return"services_courrier"; if(all.includes("paypal")||all.includes("3x")||all.includes("4x")||all.includes("oney")||all.includes("cofidis amazon"))return"paypal_4x"; if(all.includes("bnpp ere")||all.includes("prlv sepa bnpp ere")||all.includes("depenses d epargne")||all.includes("prel verst vol")||all.includes("pea")||all.includes("assurance vie"))return"epargne_existante"; if(all.includes("costco"))return"courses_costco"; if(all.includes("auchan")||all.includes("carrefour")||all.includes("super u")||all.includes("lidl")||all.includes("colruyt")||all.includes("picard")||all.includes("leclerc")||all.includes("intermarche")||all.includes("franprix")||all.includes("rewe")||all.includes("boucherie")||all.includes("ferme briarde")||all.includes("cueillettes")||all.includes("marie blachere")||all.includes("poulaillon")||all.includes("paul")||all.includes("boulangerie")||all.includes("maxicoffee")||all.includes("alimentation"))return"courses_complement"; if(all.includes("hema")||all.includes("normal serris")||all.includes("truffaut")||all.includes("ikea")||all.includes("boulanger ")||all.includes("boulang montevr")||all.includes("maison marteau")||all.includes("mobilier")||all.includes("decoration")||all.includes("electromenager"))return"hygiene_maison"; if(all.includes("amazon")||all.includes("amzn")||all.includes("temu")||all.includes("vinted")||all.includes("ebay")||all.includes("h m")||all.includes("hennes")||all.includes("primark")||all.includes("kiabi")||all.includes("zara")||all.includes("ralph lauren")||all.includes("intersport")||all.includes("chaussea")||all.includes("fnac")||all.includes("cultura")||all.includes("socultur")||all.includes("action")||all.includes("leboncoin")||all.includes("jour de fete")||all.includes("mdm")||all.includes("vallee village")||all.includes("shopping"))return"shopping"; return"autre"}
+function parseBankExportText(text){let rows=String(text||"").split(/\r?\n/).map(l=>l.trim()).filter(Boolean), out=[]; if(!rows.length)return out; let first=splitLine(rows[0]), idx=headerIdx(first), start=idx.hasHeader?1:0; for(const line of rows.slice(start)){let c=splitLine(line).map(x=>x.trim().replace(/^"|"$/g,"")); if(c.length<3)continue; let signed=toNumber(c[idx.amountIndex]??c[6]); if(!signed)continue; let label=c[idx.labelIndex]||c[2]||c[idx.simplifiedLabelIndex]||"Opération importée", type=signed>0?"income":"expense"; out.push({id:id(),date:normDate(c[idx.dateIndex]||c[0]),type,category:type==="income"?"revenus":detectImportedCategory({label,bankCategory:c[idx.categoryIndex]||c[3]||"",bankGroup:c[idx.groupIndex]||c[4]||"",simplifiedLabel:c[idx.simplifiedLabelIndex]||c[5]||"",amount:signed}),label,amount:Math.abs(signed)})} return normalizeTransactions(out)}
+
+function render(){save("settings",settings);save("budgets",budgets);save("transactions",transactions);save("selectedMonth",selectedMonth);save("monthBalances",monthBalances);document.getElementById("selectedMonth").value=selectedMonth;document.getElementById("startBalance").value=monthBalances[selectedMonth]??settings.initialBalance;document.getElementById("expectedIncomeRemaining").value=settings.expectedIncomeRemaining;document.getElementById("minimumBalance").value=settings.minimumBalance;document.getElementById("opDate").value=document.getElementById("opDate").value||dateForMonth(selectedMonth);renderCategories();let f=forecast(), ok=f.projectedEndBalance>=toNumber(settings.minimumBalance);document.getElementById("metrics").innerHTML=`<div class="card metric"><p>Solde réel calculé maintenant</p><b>${euro(f.currentBalance)}</b><small>Solde début + entrées payées - dépenses payées</small></div><div class="card metric"><p>Déjà payé ce cycle</p><b>${euro(f.expensesPaid)}</b><small>Uniquement les opérations du cycle</small></div><div class="card metric"><p>Reste prévu à payer</p><b>${euro(f.remainingBudget+f.remainingSimulationSaving)}</b><small>Budgets restants + simulation non virée</small></div><div class="card metric"><p><span class="status ${ok?'ok':'no'}">${ok?'✓':'!'}</span> Solde prévisionnel fin de cycle</p><b>${euro(f.projectedEndBalance)}</b><small>Après paiements restants et épargne simulation</small></div>`;document.getElementById("periodInfo").textContent=`Période suivie : ${f.period.start} → ${f.period.end} ${f.period.mode==='salary'?'(cycle basé sur Euro Disney)':'(mois calendrier, aucun virement Euro Disney détecté)'}`;document.getElementById("forecastBox").innerHTML=`<div class="line"><span>Solde début du cycle</span><b>${euro(monthBalances[selectedMonth]??settings.initialBalance)}</b></div><div class="line green"><span>+ Entrées déjà payées</span><b>${euro(f.incomePaid)}</b></div><div class="line green"><span>+ Entrées prévues restantes</span><b>${euro(settings.expectedIncomeRemaining)}</b></div><div class="line red"><span>- Dépenses déjà payées</span><b>${euro(f.expensesPaid)}</b></div><div class="line red"><span>- Reste des budgets à payer</span><b>${euro(f.remainingBudget)}</b></div><div class="line red"><span>- Épargne simulation restant à virer</span><b>${euro(f.remainingSimulationSaving)}</b></div><div class="line total"><span>= Solde prévisionnel fin de cycle</span><b>${euro(f.projectedEndBalance)}</b></div>`;document.getElementById("simulationBox").innerHTML=`<h2>Simulation maison</h2><p>Crédit simulé : <b>${euro(settings.simulatedHouseCredit)}</b></p><p>Loyer actuel + DIAC : <b>${euro(f.simulation.currentHousingEffort)}</b></p><p>Différence à épargner : <b>${euro(f.simulation.creditDifference)}</b></p><p>Frais propriétaire : <b>${euro(settings.ownerCostsProvision)}</b></p><p>Épargne sécurité : <b>${euro(settings.securitySaving)}</b></p><p>Déjà viré ce cycle : <b>${euro(f.simulationAlreadyPaid)}</b></p><hr><p class="muted">Reste à virer ce cycle</p><h1>${euro(f.remainingSimulationSaving)}</h1>${ok?'': '<p class="danger"><b>Attention :</b> le solde prévisionnel passe sous le plancher de sécurité.</p>'}`;renderSettings();renderSummary(f);renderBudgets(f);renderHistory(f)}
+function renderCategories(){let sel=document.getElementById("opCategory"),cur=sel.value||"courses_costco";sel.innerHTML=allCategoriesHtml(cur);sel.value=cur}
+function renderSettings(){let fields=[["Revenus mensuels repère","targetIncome"],["Solde par défaut nouveau cycle","initialBalance"],["Loyer actuel","currentRent"],["Crédit auto DIAC","currentDiac"],["Crédit maison simulé","simulatedHouseCredit"],["Frais propriétaire","ownerCostsProvision"],["Épargne sécurité","securitySaving"]];document.getElementById("settingsBox").innerHTML=fields.map(([label,key])=>`<label>${label}<input type="text" value="${settings[key]}" onchange="settings['${key}']=toNumber(this.value);render()"></label>`).join("")}
+function renderSummary(f){document.getElementById("summaryBox").innerHTML=`<div class="line"><span>Entrées reçues</span><b>${euro(f.incomePaid)}</b></div><div class="line"><span>Dépenses payées</span><b>${euro(f.expensesPaid)}</b></div><div class="line"><span>Budgets restants</span><b>${euro(f.remainingBudget)}</b></div><div class="line"><span>Simulation restante</span><b>${euro(f.remainingSimulationSaving)}</b></div><div class="line total"><span>Solde prévisionnel</span><b>${euro(f.projectedEndBalance)}</b></div>`}
+function renderBudgets(f){let html="";for(const b of budgets){let spent=f.spentByCategory[b.id]||0,lim=toNumber(b.limit),rem=Math.max(0,lim-spent),over=Math.max(0,spent-lim),pct=lim>0?Math.min(100,(spent/lim)*100):(spent>0?100:0),ops=f.monthTransactions.filter(t=>t.type==='expense'&&t.category===b.id);html+=`<div class="budget-card"><div class="budget-head"><div><b>${escapeHtml(b.label)}</b><p class="${over?'danger':'muted'}">${over?'Dépassement':'Reste à payer'} : ${euro(over||rem)}</p></div><input value="${b.limit}" onchange="updateBudget('${b.id}',this.value)"></div><div class="bar"><div class="${over?'over':''}" style="width:${pct}%"></div></div><p class="note">Payé : ${euro(spent)} / Budget : ${euro(lim)}</p><hr><b>Détail des opérations</b>${ops.length?'':'<p class="note">Aucune opération dans ce budget.</p>'}${ops.map(op=>opHtml(op)).join("")}</div>`}let simOps=f.monthTransactions.filter(t=>t.type==='expense'&&t.category===SAVING_CATEGORY);html+=`<div class="budget-card"><b>Épargne simulation maison</b><p class="muted">Reste à virer : ${euro(f.remainingSimulationSaving)}</p><div class="bar"><div style="width:${f.simulation.totalToSave>0?Math.min(100,(f.simulationAlreadyPaid/f.simulation.totalToSave)*100):0}%"></div></div><p class="note">Viré : ${euro(f.simulationAlreadyPaid)} / Objectif : ${euro(f.simulation.totalToSave)}</p><hr><b>Détail des virements</b>${simOps.length?'':'<p class="note">Aucun virement simulation saisi.</p>'}${simOps.map(op=>opHtml(op)).join("")}</div>`;document.getElementById("budgetDetails").innerHTML=html}
+function opHtml(op){return `<div class="op"><div class="op-flex"><div><b>${escapeHtml(op.label)}</b><br><span class="muted">${op.date} · ${euro(op.amount)}</span></div><div class="btns"><select onchange="changeCategory('${op.id}',this.value)">${allCategoriesHtml(op.category)}</select><button class="btn ghost" onclick="removeTransaction('${op.id}')">Supprimer</button></div></div></div>`}
+function renderHistory(f){let tbody=document.getElementById("historyRows");if(!f.monthTransactions.length){tbody.innerHTML='<tr><td colspan="6" class="muted" style="text-align:center;padding:20px">Aucune opération saisie pour ce cycle.</td></tr>';return}tbody.innerHTML=f.monthTransactions.map(t=>`<tr><td>${t.date}</td><td>${t.type==='income'?'Entrée':'Dépense'}</td><td>${t.type==='income'?'Revenus':`<select onchange="changeCategory('${t.id}',this.value)">${allCategoriesHtml(t.category)}</select>`}</td><td>${escapeHtml(t.label)}</td><td class="amount ${t.type==='income'?'income':''}">${t.type==='income'?'+':'-'}${euro(t.amount)}</td><td><button class="btn ghost" onclick="removeTransaction('${t.id}')">Supprimer</button></td></tr>`).join("")}
+
+function addTransaction(){let amount=toNumber(document.getElementById("opAmount").value);if(amount<=0)return;let type=document.getElementById("opType").value,cat=type==='income'?'revenus':document.getElementById("opCategory").value,label=document.getElementById("opLabel").value||(type==='income'?"Entrée d'argent":(cat===SAVING_CATEGORY?"Épargne simulation maison":budgetById(cat)?.label||"Opération"));transactions.unshift({id:id(),date:document.getElementById("opDate").value||dateForMonth(selectedMonth),type,category:cat,label,amount});document.getElementById("opLabel").value="";document.getElementById("opAmount").value="";render()}
+function updateBudget(i,v){budgets=budgets.map(b=>b.id===i?{...b,limit:toNumber(v)}:b);render()} function changeCategory(i,c){transactions=transactions.map(t=>t.id===i&&t.type==='expense'?{...t,category:c}:t);render()} function removeTransaction(i){transactions=transactions.filter(t=>t.id!==i);render()} function toggle(id){document.getElementById(id).classList.toggle('hidden')}
+function clearImport(){document.getElementById("importText").value="";document.getElementById("importMessage").textContent=""}
+function importBankOperations(){let imported=parseBankExportText(document.getElementById("importText").value);if(!imported.length){document.getElementById("importMessage").textContent="Aucune opération reconnue. Importe un CSV BoursoBank ou copie-colle les lignes depuis Excel.";return}let keys=new Set(transactions.map(tKey)),unique=imported.filter(x=>!keys.has(tKey(x)));transactions=[...unique,...transactions];let unk=unique.filter(x=>x.type==='expense'&&x.category==='autre').length;document.getElementById("importMessage").textContent=`${unique.length} opération(s) importée(s). ${imported.length-unique.length} doublon(s) ignoré(s). ${unk} opération(s) à vérifier.`;if(unique[0]?.date)selectedMonth=monthOf(unique[0].date);render()}
+document.getElementById("fileInput").addEventListener("change",e=>{let file=e.target.files[0];if(!file)return;let reader=new FileReader();reader.onload=()=>{document.getElementById("importText").value=String(reader.result||"");document.getElementById("importMessage").textContent=`Fichier ${file.name} chargé. Clique sur “Importer les opérations”.`};reader.onerror=()=>document.getElementById("importMessage").textContent="Impossible de lire le fichier.";reader.readAsText(file,"utf-8");e.target.value=""});
+document.getElementById("selectedMonth").addEventListener("change",e=>{selectedMonth=e.target.value;if(monthBalances[selectedMonth]===undefined)monthBalances[selectedMonth]=settings.initialBalance;document.getElementById("opDate").value=dateForMonth(selectedMonth);render()});document.getElementById("startBalance").addEventListener("change",e=>{monthBalances[selectedMonth]=toNumber(e.target.value);render()});document.getElementById("expectedIncomeRemaining").addEventListener("change",e=>{settings.expectedIncomeRemaining=toNumber(e.target.value);render()});document.getElementById("minimumBalance").addEventListener("change",e=>{settings.minimumBalance=toNumber(e.target.value);render()});document.getElementById("opType").addEventListener("change",e=>{document.getElementById("opCategory").disabled=e.target.value==='income';renderCategories()});
+function resetSelectedCycle(){if(!confirm("Effacer les opérations du cycle sélectionné ?"))return;let p=getBudgetPeriod(selectedMonth);transactions=transactions.filter(t=>!(t.date>=p.start&&t.date<p.end));monthBalances[selectedMonth]=settings.initialBalance;render()} function resetAll(){if(!confirm("Remettre tout l'outil à zéro ?"))return;settings={...DEFAULT_SETTINGS};budgets=JSON.parse(JSON.stringify(DEFAULT_BUDGETS));transactions=[];selectedMonth=today().slice(0,7);monthBalances={[selectedMonth]:DEFAULT_SETTINGS.initialBalance};render()}
+function runTests(){let tests=[];let sim=simulation();tests.push(["Calcul simulation",Math.abs(sim.totalToSave-901.94)<0.01, euro(sim.totalToSave)]);let sample="04/05/2026;04/05/2026;Bnpp Ere | PRLV SEPA BNPP ERE;Dépenses d'épargne;Epargne;bnpp ere;-100,00";let imp=parseBankExportText(sample);tests.push(["BNPP ERE = épargne",imp[0]?.category==='epargne_existante',imp[0]?.category]);let csv="Date opération;Date valeur;Libellé;Catégorie;Groupe;Libellé simplifié;Montant\n04/05/2026;04/05/2026;Orange | PRLV SEPA ORANGE SA;Téléphonie;Abonnements;orange;-51,99";let imp2=parseBankExportText(csv);tests.push(["CSV avec en-têtes",imp2[0]?.category==='telecom',imp2[0]?.category]);document.getElementById("testsBox").innerHTML='<h2>Tests</h2>'+tests.map(t=>`<p class="${t[1]?'pass':'fail'}">${t[1]?'✅':'❌'} ${t[0]} — ${t[2]}</p>`).join("")}
+let activeTab = "dashboard";
+setInterval(()=>{if(!document.getElementById('testsBox').classList.contains('hidden'))runTests()},1000);document.getElementById("opDate").value=dateForMonth(selectedMonth);render();runTests();
+pullSync();
+setInterval(pullSync, 60000);
+
+// ====== NOUVELLE LOGIQUE UI ======
+
+function showTab(name) {
+  activeTab = name;
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  const tabs = ["dashboard","saisie","budgets","historique","maison","parametres"];
+  document.querySelectorAll(".tab")[tabs.indexOf(name)].classList.add("active");
+  document.getElementById("panel-" + name).classList.add("active");
+  render();
+}
+
+function formatMonth(m) {
+  const [y, mo] = m.split("-");
+  const names = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
+  return names[parseInt(mo)-1] + " " + y;
+}
+
+function buildMonthSelector() {
+  const sel = document.getElementById("selectedMonth");
+  const cur = today().slice(0,7);
+  let months = [];
+  for (let i = -3; i <= 1; i++) {
+    const d = new Date(cur + "-01"); d.setMonth(d.getMonth()+i);
+    months.push(d.toISOString().slice(0,7));
+  }
+  const txMonths = [...new Set(normalizeTransactions(transactions).map(t => monthOf(t.date)))];
+  txMonths.forEach(m => { if (!months.includes(m)) months.push(m); });
+  months = months.sort().reverse();
+  sel.innerHTML = "";
+  months.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m; opt.textContent = formatMonth(m);
+    if (m === selectedMonth) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.onchange = e => {
+    selectedMonth = e.target.value;
+    if (monthBalances[selectedMonth] === undefined) monthBalances[selectedMonth] = settings.initialBalance;
+    save("selectedMonth", selectedMonth); save("monthBalances", monthBalances);
+    const od = document.getElementById("opDate"); if(od) od.value = dateForMonth(selectedMonth);
+    const od2 = document.getElementById("opDate2"); if(od2) od2.value = dateForMonth(selectedMonth);
+    render();
+  };
+}
+
+function renderAlerts(f, ok, warn) {
+  let h = "";
+  if (!ok && toNumber(settings.minimumBalance) > 0) h += '<div class="al al-d"><span style="font-size:15px">&#128680;</span><div><b>Solde pr&#233;visionnel sous le plancher de s&#233;curit&#233;</b> &#8212; Il manque ' + euro(toNumber(settings.minimumBalance)-f.projectedEndBalance) + ' pour atteindre ' + euro(settings.minimumBalance) + '.</div></div>';
+  else if (warn && toNumber(settings.minimumBalance) > 0) h += '<div class="al al-w"><span style="font-size:15px">&#9888;&#65039;</span><div><b>Solde proche du plancher</b> &#8212; Reste ' + euro(f.projectedEndBalance-toNumber(settings.minimumBalance)) + ' de marge.</div></div>';
+  else h += '<div class="al al-o"><span style="font-size:15px">&#9989;</span><div><b>Cycle sous contr&#244;le</b> &#8212; Solde pr&#233;visionnel&#160;: ' + euro(f.projectedEndBalance) + ' &#183; Marge&#160;: ' + euro(f.projectedEndBalance-toNumber(settings.minimumBalance)) + '</div></div>';
+  document.getElementById("alertsBox").innerHTML = h;
+}
+
+function renderMetricsNew(f, ok, warn) {
+  const cc = ok ? "ok" : warn ? "" : "ng";
+  const bdg = ok ? '<span class="bdg bdg-ok">&#10003; OK</span>' : warn ? '<span class="bdg bdg-w">&#9888; Attention</span>' : '<span class="bdg bdg-d">&#10007; Danger</span>';
+  document.getElementById("m1").innerHTML = '<p>Solde actuel calcul&#233;</p><b>' + euro(f.currentBalance) + '</b><small>D&#233;but + entr&#233;es &#8722; d&#233;penses</small>';
+  document.getElementById("m2").innerHTML = '<p>D&#233;j&#224; d&#233;pens&#233;</p><b>' + euro(f.expensesPaid) + '</b><small>Ce cycle</small>';
+  document.getElementById("m3").innerHTML = '<p>Reste &#224; payer</p><b>' + euro(f.remainingBudget+f.remainingSimulationSaving) + '</b><small>Budgets + simulation</small>';
+  document.getElementById("m4").className = "mc " + cc;
+  document.getElementById("m4").innerHTML = '<p>Solde pr&#233;visionnel fin de cycle</p><b>' + euro(f.projectedEndBalance) + '</b>' + bdg;
+}
+
+function renderForecastNew(f) {
+  const sb = monthBalances[selectedMonth] != null ? monthBalances[selectedMonth] : settings.initialBalance;
+  document.getElementById("forecastBox").innerHTML =
+    '<div class="fline"><span>Solde d&#233;but du cycle</span><b>' + euro(sb) + '</b></div>' +
+    '<div class="fline in"><span>+ Entr&#233;es d&#233;j&#224; re&#231;ues</span><b style="color:var(--ok)">' + euro(f.incomePaid) + '</b></div>' +
+    '<div class="fline in"><span>+ Entr&#233;es pr&#233;vues restantes</span><b style="color:var(--ok)">' + euro(settings.expectedIncomeRemaining) + '</b></div>' +
+    '<div class="fline ex"><span>&#8722; D&#233;penses pay&#233;es</span><b style="color:var(--danger)">' + euro(f.expensesPaid) + '</b></div>' +
+    '<div class="fline ex"><span>&#8722; Reste des budgets</span><b style="color:var(--danger)">' + euro(f.remainingBudget) + '</b></div>' +
+    '<div class="fline ex"><span>&#8722; &#201;pargne simulation restante</span><b style="color:var(--danger)">' + euro(f.remainingSimulationSaving) + '</b></div>' +
+    '<div class="fline tot"><span>= Solde pr&#233;visionnel fin de cycle</span><b>' + euro(f.projectedEndBalance) + '</b></div>';
+}
+
+function renderSimMiniNew(f) {
+  const sim = f.simulation;
+  const pct = sim.totalToSave > 0 ? Math.min(100, f.simulationAlreadyPaid/sim.totalToSave*100) : 0;
+  document.getElementById("simMiniBox").innerHTML =
+    '<div class="ct">Simulation maison &#127968;</div>' +
+    '<div class="sl"><span>Cr&#233;dit simul&#233;</span><b>' + euro(settings.simulatedHouseCredit) + '</b></div>' +
+    '<div class="sl"><span>Charges propri&#233;taire</span><b>' + euro(settings.ownerCostsProvision) + '</b></div>' +
+    '<div class="sl"><span>Loyer + DIAC actuels</span><b>&#8722;' + euro(sim.currentHousingEffort) + '</b></div>' +
+    '<div class="sl stot"><span>Total &#224; &#233;pargner / cycle</span><b>' + euro(sim.totalToSave) + '</b></div>' +
+    '<div class="pbar" style="margin-top:11px"><div class="pf' + (f.remainingSimulationSaving<=0?" ok":"") + '" style="width:' + pct + '%"></div></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:5px"><span>Vir&#233;&#160;: ' + euro(f.simulationAlreadyPaid) + '</span><span>Reste&#160;: <b style="color:' + (f.remainingSimulationSaving>0?"var(--accent)":"var(--ok)") + '">' + euro(f.remainingSimulationSaving) + '</b></span></div>';
+}
+
+function renderSummaryChart(f) {
+  const cats = budgets.filter(b => toNumber(b.limit)>0 || f.spentByCategory[b.id]);
+  let h = '<div style="display:flex;flex-direction:column;gap:6px">';
+  for (const b of cats) {
+    const spent = f.spentByCategory[b.id]||0, lim = toNumber(b.limit);
+    const pct = lim>0 ? Math.min(100,spent/lim*100) : (spent>0?100:0), over = spent>lim&&lim>0;
+    h += '<div style="display:grid;grid-template-columns:175px 1fr 68px 68px;gap:10px;align-items:center;font-size:12px"><span style="color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(b.label) + '</span><div class="pbar" style="margin-top:0"><div class="pf ' + (over?"ov":pct>80?"ac":"") + '" style="width:' + pct + '%"></div></div><span style="text-align:right;color:' + (over?"var(--danger)":"var(--text)") + ';font-weight:600">' + euro(spent) + '</span><span style="text-align:right;color:var(--muted)">' + (lim>0?euro(lim):"libre") + '</span></div>';
+  }
+  h += '</div>';
+  document.getElementById("summaryChart").innerHTML = h;
+}
+
+function renderLastOps(f) {
+  const last = f.monthTransactions.slice(0,10);
+  if (!last.length) { document.getElementById("lastOpsBox").innerHTML = ""; return; }
+  let h = '<div class="card"><div class="ct">Derni&#232;res op&#233;rations</div><div class="tw"><table><thead><tr><th>Date</th><th>Libell&#233;</th><th>Cat&#233;gorie</th><th class="am">Montant</th><th></th></tr></thead><tbody>';
+  for (const t of last)
+    h += '<tr><td>' + t.date + '</td><td>' + escapeHtml(t.label) + '</td><td>' + (t.type==="income"?'<span class="pill pi">Entr&#233;e</span>':"<select onchange=\"changeCategory('"+t.id+"',this.value)\">"+allCategoriesHtml(t.category)+"</select>") + '</td><td class="am ' + (t.type==="income"?"iv":"ev") + '">' + (t.type==="income"?"+":"-") + euro(t.amount) + '</td><td><button class="btn btn-g" onclick="removeTransaction(&quot;' + t.id + '&quot;)" style="font-size:12px">&#128465;</button></td></tr>';
+  h += '</tbody></table></div></div>';
+  document.getElementById("lastOpsBox").innerHTML = h;
+}
+
+function renderBudgetsNew(f) {
+  let h = "";
+  for (const b of budgets) {
+    const spent = f.spentByCategory[b.id]||0, lim = toNumber(b.limit);
+    const rem = Math.max(0,lim-spent), over = Math.max(0,spent-lim);
+    const pct = lim>0 ? Math.min(100,spent/lim*100) : (spent>0?100:0);
+    const ops = f.monthTransactions.filter(t=>t.type==="expense"&&t.category===b.id);
+    const statusColor = over ? "var(--danger)" : "var(--muted)";
+    const statusText = over ? `&#9650; +${euro(over)} d&#233;passement` : `reste ${euro(rem)}`;
+    const opsHtml = ops.map(op => `<div class="opi"><span class="opl">${escapeHtml(op.label)} &#183; ${op.date}</span><span class="opa">${euro(op.amount)}</span><span class="ops"><select onchange="changeCategory('${op.id}',this.value)">${allCategoriesHtml(op.category)}</select></span><button class="btn btn-g" style="font-size:11px;padding:2px 5px" onclick="removeTransaction('${op.id}')">&#128465;</button></div>`).join("");
+    h += `<div class="bc"><div class="bh"><div><div class="bn">${escapeHtml(b.label)}</div><div class="ba"><span style="font-weight:600">${euro(spent)}</span>${lim>0?`<span style="color:${statusColor}">${statusText}</span>`:""}</div></div><div><input value="${b.limit}" onchange="updateBudget('${b.id}',this.value)"/></div></div><div class="pbar"><div class="pf ${over?"ov":pct>85?"ac":""}" style="width:${pct}%"></div></div><p style="font-size:10px;color:var(--muted);margin-top:4px">Budget&#160;: ${lim>0?euro(lim):"non d&#233;fini"}</p>${ops.length?`<div class="bop">${opsHtml}</div>`:""}</div>`;
+  }
+  const simOps = f.monthTransactions.filter(t=>t.type==="expense"&&t.category===SAVING_CATEGORY);
+  const sim = f.simulation;
+  const simPct = sim.totalToSave>0?Math.min(100,f.simulationAlreadyPaid/sim.totalToSave*100):0;
+  const simOpsHtml = simOps.map(op=>`<div class="opi"><span class="opl">${escapeHtml(op.label)} &#183; ${op.date}</span><span class="opa">${euro(op.amount)}</span><button class="btn btn-g" style="font-size:11px;padding:2px 5px" onclick="removeTransaction('${op.id}')">&#128465;</button></div>`).join("");
+  h += `<div class="bc" style="border-color:rgba(240,165,0,.35)"><div class="bh"><div><div class="bn">&#128176; &#201;pargne simulation maison</div><div class="ba"><span style="font-weight:600;color:var(--accent)">${euro(f.simulationAlreadyPaid)}</span><span style="color:var(--muted)">reste ${euro(f.remainingSimulationSaving)}</span></div></div></div><div class="pbar"><div class="pf" style="width:${simPct}%"></div></div><p style="font-size:10px;color:var(--muted);margin-top:4px">Objectif&#160;: ${euro(sim.totalToSave)}</p>${simOps.length?`<div class="bop">${simOpsHtml}</div>`:""}</div>`;
+  document.getElementById("budgetDetails").innerHTML = h;
+}
+
+function renderHistoryNew(f) {
+  const tbody = document.getElementById("historyRows");
+  if (!f.monthTransactions.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:26px">Aucune op&#233;ration pour ce cycle.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = f.monthTransactions.map(t =>
+    '<tr><td>' + t.date + '</td><td><span class="pill ' + (t.type==="income"?"pi":"pe") + '">' + (t.type==="income"?"Entr&#233;e":"D&#233;pense") + '</span></td><td>' +
+    (t.type==="income"?"Revenus":"<select onchange=\"changeCategory('"+t.id+"',this.value)\">"+allCategoriesHtml(t.category)+"</select>") +
+    '</td><td>' + escapeHtml(t.label) + '</td><td class="am ' + (t.type==="income"?"iv":"ev") + '">' + (t.type==="income"?"+":"-") + euro(t.amount) + '</td><td><button class="btn btn-g" style="font-size:12px" onclick="removeTransaction(&quot;' + t.id + '&quot;)">&#128465;</button></td></tr>'
+  ).join("");
+}
+
+function renderMaisonNew(f) {
+  const sim = f.simulation;
+  document.getElementById("simLines").innerHTML =
+    '<div class="sl"><span>&#128308; Cr&#233;dit maison</span><b>' + euro(settings.simulatedHouseCredit) + '</b></div>' +
+    '<div class="sl"><span>&#128308; Frais propri&#233;taire</span><b>' + euro(settings.ownerCostsProvision) + '</b></div>' +
+    '<div class="sl"><span>&#128308; Coussin s&#233;curit&#233;</span><b>' + euro(settings.securitySaving) + '</b></div>' +
+    '<div class="sl stot"><span>Total co&#251;t maison / mois</span><b>' + euro(sim.maisonTotal) + '</b></div>' +
+    '<div style="height:1px;background:rgba(255,255,255,.07);margin:8px 0"></div>' +
+    '<div class="sl"><span>&#9989; Loyer (dispara&#238;t &#224; l\'achat)</span><b>&#8722;' + euro(settings.currentRent) + '</b></div>' +
+    '<div class="sl"><span>&#9989; Cr&#233;dit DIAC (dispara&#238;t)</span><b>&#8722;' + euro(settings.currentDiac) + '</b></div>' +
+    '<div class="sl stot" style="background:rgba(240,165,0,.18);border-radius:8px;padding:10px;margin-top:4px"><span>&#127968; &#192; &#233;pargner ce cycle</span><b style="font-size:1.25em;color:var(--accent)">' + euro(sim.totalToSave) + '</b></div>';
+  document.getElementById("simRemainVal").textContent = euro(f.remainingSimulationSaving);
+  // Alerte début de cycle
+  const isNewCycle = f.simulationAlreadyPaid === 0;
+  const alertBox = document.getElementById("cycleAlertBox");
+  if (alertBox) {
+    const sim = f.simulation;
+    if (isNewCycle) {
+      alertBox.innerHTML = '<div class="al al-d" style="font-size:15px"><span>&#127968;</span><div><b>Nouveau cycle — vire ' + euro(sim.totalToSave) + ' sur ton livret</b><br><small style="opacity:.8">Crédit ' + euro(settings.simulatedHouseCredit) + ' + frais ' + euro(settings.ownerCostsProvision) + ' + coussin ' + euro(settings.securitySaving) + ' − loyer ' + euro(settings.currentRent) + ' − DIAC ' + euro(settings.currentDiac) + ' = ' + euro(sim.totalToSave) + '</small></div></div>';
+    } else {
+      alertBox.innerHTML = '<div class="al al-o"><span>&#9989;</span><div>Épargne simulation <b>' + euro(f.simulationAlreadyPaid) + '</b> virée — reste <b>' + euro(f.remainingSimulationSaving) + '</b>' + (f.remainingSimulationSaving <= 0 ? ' ✓ complet !' : '') + '</div></div>';
+    }
+  }
+  const totalBudgets = budgets.reduce((s,b) => s+toNumber(b.limit), 0);
+  const ratio = (totalBudgets + sim.totalToSave) / toNumber(settings.targetIncome) * 100;
+  const msgs = [];
+  if (ratio > 95) msgs.push({t:"d", m:"Tes d&#233;penses budget&#233;es (" + euro(totalBudgets+sim.totalToSave) + ") = " + ratio.toFixed(0) + "% des revenus (" + euro(settings.targetIncome) + "). Tr&#232;s peu de marge &#8212; r&#233;duis certains postes."});
+  else if (ratio > 85) msgs.push({t:"w", m:"Tes d&#233;penses budget&#233;es = " + ratio.toFixed(0) + "% des revenus. Marge serr&#233;e mais g&#233;rable avec discipline."});
+  else msgs.push({t:"o", m:"Tes d&#233;penses budget&#233;es = " + ratio.toFixed(0) + "% des revenus. Bonne marge de mano&#339;uvre &#10024;"});
+  // Alerte principale : ce qu'il faut virer ce cycle
+  const dejaVire = f.simulationAlreadyPaid;
+  const resteAVirer = f.remainingSimulationSaving;
+  if (resteAVirer > 0) {
+    msgs.push({t:"w", m:"&#128176; <b>Ce cycle : vire " + euro(resteAVirer) + " sur ton livret</b> (simulation maison). D&#233;j&#224; vir&#233; : " + euro(dejaVire) + " / Objectif : " + euro(sim.totalToSave) + "<br><small style=\"opacity:.75\">Libell&#233; du virement dans BoursoBank : <b>SIMULATION MAISON</b></small>"});
+  } else {
+    msgs.push({t:"o", m:"&#127881; <b>Simulation maison r&#232;gl&#233;e ce cycle !</b> Vir&#233; : " + euro(dejaVire) + " &#9989;"});
+  }
+  msgs.push({t:"o", m:"Loyer (" + euro(settings.currentRent) + ") + DIAC (" + euro(settings.currentDiac) + ") disparaissent &#224; l\'achat → tu ne rajoutes que <b>" + euro(sim.totalToSave) + " net</b>/mois &#9989;"});
+  const goal = toNumber(settings.savingsGoal) || 5000;
+  const goalMonths = toNumber(settings.savingsGoalMonths) || 6;
+  const perCycle = goal / goalMonths;
+  msgs.push({t:"o", m:"&#127919; <b>Objectif &#233;pargne intensive :</b> " + euro(goal) + " en " + goalMonths + " cycles = <b>" + euro(perCycle) + "/cycle</b> suppl&#233;mentaire."});
+  document.getElementById("logicAnalysis").innerHTML = msgs.map(m =>
+    '<div class="al al-' + (m.t==="d"?"d":m.t==="w"?"w":"o") + '">' +
+    '<span style="font-size:14px">' + (m.t==="d"?"&#128680;":m.t==="w"?"&#9888;&#65039;":"&#9989;") + '</span><div>' + m.m + '</div></div>'
+  ).join("");
+  const simOps = f.monthTransactions.filter(t=>t.type==="expense"&&t.category===SAVING_CATEGORY);
+  document.getElementById("simOpsBox").innerHTML = simOps.length ?
+    '<div class="tw"><table><thead><tr><th>Date</th><th>Libell&#233;</th><th class="am">Montant</th><th></th></tr></thead><tbody>' +
+    simOps.map(op => '<tr><td>' + op.date + '</td><td>' + escapeHtml(op.label) + '</td><td class="am iv">+' + euro(op.amount) + '</td><td><button class="btn btn-g" style="font-size:12px" onclick="removeTransaction(&quot;' + op.id + '&quot;)">&#128465;</button></td></tr>').join("") +
+    '</tbody></table></div>' :
+    '<p style="color:var(--muted);font-size:13px">Aucun virement simulation saisi. Ajoute une d&#233;pense en cat&#233;gorie &#171;&#160;&#201;pargne simulation maison&#160;&#187;.</p>';
+}
+
+function renderSettingsNew() {
+  const fields = [["Revenus mensuels rep&#232;re","targetIncome"],["Solde d&#233;faut nouveau cycle","initialBalance"],["Loyer actuel","currentRent"],["Cr&#233;dit auto DIAC","currentDiac"],["Cr&#233;dit maison simul&#233;","simulatedHouseCredit"],["Frais propri&#233;taire/mois","ownerCostsProvision"],["Coussin s&#233;curit&#233; mensuel","securitySaving"]];
+  document.getElementById("settingsBox").innerHTML = fields.map(([label,key]) =>
+    `<div><label>${label}</label><input type="text" value="${settings[key]}" onchange="settings['${key}']=toNumber(this.value);render()"/></div>`
+  ).join("");
+  const sb = monthBalances[selectedMonth] != null ? monthBalances[selectedMonth] : settings.initialBalance;
+  const s2 = document.getElementById("startBalance2"); if(s2) s2.value = sb;
+  const ei2 = document.getElementById("expectedIncomeRemaining2"); if(ei2) ei2.value = settings.expectedIncomeRemaining;
+  const mb2 = document.getElementById("minimumBalance2"); if(mb2) mb2.value = settings.minimumBalance;
+  const sg = document.getElementById("savingsGoal"); if(sg) sg.value = settings.savingsGoal||5000;
+  const sgm = document.getElementById("savingsGoalMonths"); if(sgm) sgm.value = settings.savingsGoalMonths||6;
+}
+
+// Sync saisie panel with dashboard inputs
+function addTransaction2() {
+  const amount = toNumber(document.getElementById("opAmount2").value);
+  if (amount <= 0) return;
+  const type = document.getElementById("opType2").value;
+  const cat = type === "income" ? "revenus" : document.getElementById("opCategory2").value;
+  const rawLabel = document.getElementById("opLabel2").value;
+  const label = rawLabel || (type==="income" ? "Entrée d'argent" : (cat===SAVING_CATEGORY ? "Épargne simulation maison" : budgetById(cat)?.label || "Opération"));
+  const dateEl = document.getElementById("opDate2");
+  transactions.unshift({id:id(), date:dateEl?.value||dateForMonth(selectedMonth), type, category:cat, label, amount});
+  document.getElementById("opLabel2").value = "";
+  document.getElementById("opAmount2").value = "";
+  render();
+}
+
+function onTypeChange2() {
+  const t = document.getElementById("opType2").value;
+  const cat2 = document.getElementById("opCategory2");
+  if (cat2) cat2.disabled = (t === "income");
+  renderCategories2();
+}
+
+function renderCategories2() {
+  const sel = document.getElementById("opCategory2");
+  if (!sel) return;
+  const cur = sel.value || "courses_costco";
+  sel.innerHTML = allCategoriesHtml(cur);
+  sel.value = cur;
+}
+
+function onStartBalanceChange() {
+  const v = document.getElementById("startBalance");
+  if(v) { monthBalances[selectedMonth] = toNumber(v.value); save("monthBalances",monthBalances); render(); }
+}
+function onExpectedChange() {
+  const v = document.getElementById("expectedIncomeRemaining");
+  if(v) { settings.expectedIncomeRemaining = toNumber(v.value); render(); }
+}
+function onMinBalanceChange() {
+  const v = document.getElementById("minimumBalance");
+  if(v) { settings.minimumBalance = toNumber(v.value); render(); }
+}
+
+// OVERRIDE render to add new features
+const _origRender = render;
+function render() {
+  save("settings",settings);save("budgets",budgets);save("transactions",transactions);save("selectedMonth",selectedMonth);save("monthBalances",monthBalances);
+  
+  buildMonthSelector();
+  renderCategories();
+  renderCategories2();
+
+  const f = forecast();
+  const ok = f.projectedEndBalance >= toNumber(settings.minimumBalance);
+  const warn = f.projectedEndBalance < toNumber(settings.minimumBalance)+400;
+
+  // Sync header period
+  const pt = document.getElementById("periodText");
+  if (pt) {
+    const mode = f.period.mode==="salary" ? "Cycle basé sur virement Euro Disney" : "Mois calendrier";
+    pt.textContent = mode + " · " + f.period.start + " → " + f.period.end;
+  }
+  const ps = document.getElementById("periodShort");
+  if(ps) ps.textContent = f.period.start + " → " + f.period.end;
+
+  // Sync dashboard quick inputs
+  const sb = document.getElementById("startBalance");
+  if(sb) sb.value = monthBalances[selectedMonth]!=null?monthBalances[selectedMonth]:settings.initialBalance;
+  const ei = document.getElementById("expectedIncomeRemaining");
+  if(ei) ei.value = settings.expectedIncomeRemaining;
+  const mb = document.getElementById("minimumBalance");
+  if(mb) mb.value = settings.minimumBalance;
+
+  if (activeTab === "dashboard") {
+    renderAlerts(f, ok, warn);
+    renderMetricsNew(f, ok, warn);
+    renderForecastNew(f);
+    renderSimMiniNew(f);
+    renderSummaryChart(f);
+  }
+  if (activeTab === "saisie") { renderCategories2(); renderLastOps(f); }
+  if (activeTab === "budgets") renderBudgetsNew(f);
+  if (activeTab === "historique") renderHistoryNew(f);
+  if (activeTab === "maison") renderMaisonNew(f);
+  if (activeTab === "parametres") renderSettingsNew();
+}
+
+// Init opDate fields
+const od = document.getElementById("opDate"); if(od) od.value = dateForMonth(selectedMonth);
+const od2 = document.getElementById("opDate2"); if(od2) od2.value = dateForMonth(selectedMonth);
+if (monthBalances[selectedMonth] == null) monthBalances[selectedMonth] = settings.initialBalance;
+render();
+runTests();
+</script>
+</body>
+</html>
