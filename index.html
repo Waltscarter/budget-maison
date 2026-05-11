@@ -537,7 +537,19 @@ function renderHistory(f){let tbody=document.getElementById("historyRows");if(!f
 function addTransaction(){let amount=toNumber(document.getElementById("opAmount").value);if(amount<=0)return;let type=document.getElementById("opType").value,cat=type==='income'?'revenus':document.getElementById("opCategory").value,label=document.getElementById("opLabel").value||(type==='income'?"Entrée d'argent":(cat===SAVING_CATEGORY?"Épargne simulation maison":budgetById(cat)?.label||"Opération"));transactions.unshift({id:id(),date:document.getElementById("opDate").value||dateForMonth(selectedMonth),type,category:cat,label,amount});document.getElementById("opLabel").value="";document.getElementById("opAmount").value="";render()}
 function updateBudget(i,v){budgets=budgets.map(b=>b.id===i?{...b,limit:toNumber(v)}:b);render()} function changeCategory(i,c){transactions=transactions.map(t=>t.id===i&&t.type==='expense'?{...t,category:c}:t);render()} function removeTransaction(i){transactions=transactions.filter(t=>t.id!==i);render()} function toggle(id){document.getElementById(id).classList.toggle('hidden')}
 function clearImport(){document.getElementById("importText").value="";document.getElementById("importMessage").textContent=""}
-function importBankOperations(){let imported=parseBankExportText(document.getElementById("importText").value);if(!imported.length){document.getElementById("importMessage").textContent="Aucune opération reconnue. Importe un CSV BoursoBank ou copie-colle les lignes depuis Excel.";return}let keys=new Set(transactions.map(tKey)),unique=imported.filter(x=>!keys.has(tKey(x)));transactions=[...unique,...transactions];let unk=unique.filter(x=>x.type==='expense'&&x.category==='autre').length;const msg=unique.length===0?`✅ Tout déjà importé — ${imported.length} doublon(s) ignoré(s), aucune nouvelle opération.`:`✅ ${unique.length} nouvelle(s) opération(s) importée(s). ${imported.length-unique.length} doublon(s) ignoré(s).${unk>0?" ⚠️ "+unk+" opération(s) à vérifier (catégorie Autre).":""}`;document.getElementById("importMessage").textContent=msg;if(unique.length>0){if(unique[0]?.date)selectedMonth=monthOf(unique[0].date);save("transactions",transactions);}render()}
+function importBankOperations(){let imported=parseBankExportText(document.getElementById("importText").value);if(!imported.length){document.getElementById("importMessage").textContent="Aucune opération reconnue. Importe un CSV BoursoBank ou copie-colle les lignes depuis Excel.";return}let keys=new Set(transactions.map(tKey)),unique=imported.filter(x=>!keys.has(tKey(x)));transactions=[...unique,...transactions];let unk=unique.filter(x=>x.type==='expense'&&x.category==='autre').length;const msg=unique.length===0?`✅ Tout déjà importé — ${imported.length} doublon(s) ignoré(s), aucune nouvelle opération.`:`✅ ${unique.length} nouvelle(s) opération(s) importée(s). ${imported.length-unique.length} doublon(s) ignoré(s).${unk>0?" ⚠️ "+unk+" opération(s) à vérifier (catégorie Autre).":""}`;document.getElementById("importMessage").textContent=msg;if(unique.length>0){
+    // Trouver le salaire Euro Disney le plus récent pour caler le bon mois
+    const salaryTx = [...transactions].filter(t=>t.type==="income"&&norm(t.label).includes(SALARY_MARKER)).sort((a,b)=>b.date.localeCompare(a.date));
+    if(salaryTx.length>0){
+      selectedMonth = monthOf(salaryTx[0].date);
+    } else if(unique[0]?.date){
+      selectedMonth = monthOf(unique[0].date);
+    }
+    if(monthBalances[selectedMonth]===undefined) monthBalances[selectedMonth]=settings.initialBalance;
+    save("transactions",transactions);
+    save("selectedMonth",selectedMonth);
+    save("monthBalances",monthBalances);
+  }render()}
 document.getElementById("fileInput").addEventListener("change",e=>{
   const file=e.target.files[0]; if(!file)return;
   const isXlsx=file.name.toLowerCase().endsWith(".xlsx")||file.name.toLowerCase().endsWith(".xls");
